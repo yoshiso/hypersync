@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/urfave/cli/v3"
 	"github.com/yoshiso/hypersync/ent"
+	_ "modernc.org/sqlite"
 )
 
 type WSRequest struct {

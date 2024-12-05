@@ -111,14 +111,14 @@ func Conn(userAddress string) (chan []byte) {
 		for {
 			<-ticker.C
 			if err := c.WriteJSON(Ping{Method: "ping"}); err != nil {
-				println(fmt.Errorf("ws.WriteJSON ping error %v", err))
+				fmt.Println(fmt.Errorf("ws.WriteJSON ping error %v", err))
 				break
 			}
 		}
 	}()
 
 	if err := c.WriteJSON(WSRequest{Method: "subscribe", Subscription: UserFillSubscription{User: userAddress, Type: "userFills"} }); err != nil {
-		println(fmt.Errorf("ws.WriteJSON error %v", err))
+		fmt.Println(fmt.Errorf("ws.WriteJSON error %v", err))
 	}
 
 	return msgC
@@ -198,7 +198,7 @@ func main() {
 
 func run(userAddress string, verbose bool, output_file string) {
 
-	println("start running server", userAddress, output_file)
+	fmt.Println("start running server", userAddress, output_file)
 
 	client, err := ent.Open("sqlite3", "file:" + output_file + "?cache=shared&_fk=1")
     if err != nil {
@@ -321,7 +321,6 @@ func run(userAddress string, verbose bool, output_file string) {
 					}
 
 				}
-				time.Sleep(time.Second * 3)
 			}
 
 

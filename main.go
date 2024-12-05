@@ -257,70 +257,72 @@ func run(userAddress string, verbose bool, output_file string) {
 		}
 
 		fmt.Println("Complete loading fills via API, and starting websocket sync")
+		
+		Loop:
 
-		for {
-			select {
-			case msg, ok := <- msgC:
-				if !ok {
-					fmt.Println("websocket connection disconnected and restarting...")
-					break
-				}
-
-				ch := Msg{}
-				json.Unmarshal(msg, &ch)
-				
-				switch ch.Channel {
-				case "userFills":
-					data := &WSResponse{}
-
-					if err := json.Unmarshal(msg, &data); err != nil {
-						fmt.Println("failed to unmarshal JSON: %v", err)
-						break
+			for {
+				select {
+				case msg, ok := <- msgC:
+					if !ok {
+						fmt.Println("websocket connection disconnected and restarting...")
+						break Loop
 					}
 
-					for _, fill := range data.Data.Fills {
+					ch := Msg{}
+					json.Unmarshal(msg, &ch)
+					
+					switch ch.Channel {
+					case "userFills":
+						data := &WSResponse{}
 
-						user := client.Fill.Create().
-							SetCoin(fill.Coin).
-							SetPx(fill.Px).
-							SetSz(fill.Sz).
-							SetSide(fill.Side).
-							SetTime(fill.Time).
-							SetStartPosition(fill.StartPosition).
-							SetDir(fill.Dir).
-							SetHash(fill.Hash).
-							SetCrossed(fill.Crossed).
-							SetFee(fill.Fee).
-							SetTid(fill.Tid).
-							SetOid(fill.Oid).
-							SetFeeToken(fill.FeeToken).
-							SetAddress(userAddress)
+						if err := json.Unmarshal(msg, &data); err != nil {
+							fmt.Println("failed to unmarshal JSON: %v", err)
+							break
+						}
 
-						if fill.BuilderFee != nil {
-							user = user.SetBuilderFee(*fill.BuilderFee)
-						}	
+						for _, fill := range data.Data.Fills {
 
-						user.OnConflict().UpdateNewValues().IDX(ctx)
-						
-						if verbose {
-							fmt.Println(fmt.Sprintf(
-								"Coin: %s, Px: %s, Sz: %s, Side: %s, Dir: %s, Fee: %s, FeeToken: %s",
-								fill.Coin, fill.Px, fill.Sz, fill.Side, fill.Dir, fill.Fee, fill.FeeToken,
-							))
-						}			
+							user := client.Fill.Create().
+								SetCoin(fill.Coin).
+								SetPx(fill.Px).
+								SetSz(fill.Sz).
+								SetSide(fill.Side).
+								SetTime(fill.Time).
+								SetStartPosition(fill.StartPosition).
+								SetDir(fill.Dir).
+								SetHash(fill.Hash).
+								SetCrossed(fill.Crossed).
+								SetFee(fill.Fee).
+								SetTid(fill.Tid).
+								SetOid(fill.Oid).
+								SetFeeToken(fill.FeeToken).
+								SetAddress(userAddress)
+
+							if fill.BuilderFee != nil {
+								user = user.SetBuilderFee(*fill.BuilderFee)
+							}	
+
+							user.OnConflict().UpdateNewValues().IDX(ctx)
+							
+							if verbose {
+								fmt.Println(fmt.Sprintf(
+									"Coin: %s, Px: %s, Sz: %s, Side: %s, Dir: %s, Fee: %s, FeeToken: %s",
+									fill.Coin, fill.Px, fill.Sz, fill.Side, fill.Dir, fill.Fee, fill.FeeToken,
+								))
+							}			
+						}
+
+					case "subscriptionResponse":
+						continue
+					case "pong":
+						continue
+					default:
+						fmt.Println("Unhandled message: ", string(msg))
 					}
 
-				case "subscriptionResponse":
-					continue
-				case "pong":
-					continue
-				default:
-					fmt.Println("Unhandled message: ", string(msg))
 				}
-
+				time.Sleep(time.Second * 3)
 			}
-			time.Sleep(time.Second * 3)
-		}
 
 
 	}

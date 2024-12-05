@@ -8,6 +8,23 @@ Sync your hyperliquid fills with local database to avoid losing your transaction
 - Start syncing fill via websocket realtime
 - All your fills will be stored into local database, currenly only sqlite3 is supported.
 
+
+## Misc
+
+Build portable binary, will be built on bin/hypersync
+
+```
+make build
+```
+
+## Install
+
+```
+make build
+sudo mv bin/hypersync /usr/local/bin
+sudo chmod +755 /usr/local/bin/hypersync
+```
+
 ## Usage
 
 Help

@@ -21,3 +21,9 @@ Run syncer
 ```
 hypersync --address $wallet_address --verbose
 ```
+
+Run syncer with output path
+
+```
+hypersync --address $wallet_address --out path/to/database.sqlite3
+```

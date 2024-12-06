@@ -7,7 +7,7 @@ Sync your hyperliquid fills with local database to avoid losing your transaction
 - Download fills at launch via REST API (max 2000 txs)
 - Start syncing fill via websocket realtime
 - All your fills will be stored into local database, currenly only sqlite3 is supported.
-
+- By default, db file is created on ./db.sqlite3
 
 ## Misc
 

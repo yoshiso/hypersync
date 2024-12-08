@@ -11,3 +11,9 @@ type Fill func(*sql.Selector)
 
 // Funding is the predicate function for funding builders.
 type Funding func(*sql.Selector)
+
+// RewardsClaim is the predicate function for rewardsclaim builders.
+type RewardsClaim func(*sql.Selector)
+
+// SpotGenesis is the predicate function for spotgenesis builders.
+type SpotGenesis func(*sql.Selector)

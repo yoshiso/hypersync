@@ -33,6 +33,30 @@ func (f FundingFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FundingMutation", m)
 }
 
+// The RewardsClaimFunc type is an adapter to allow the use of ordinary
+// function as RewardsClaim mutator.
+type RewardsClaimFunc func(context.Context, *ent.RewardsClaimMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f RewardsClaimFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.RewardsClaimMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RewardsClaimMutation", m)
+}
+
+// The SpotGenesisFunc type is an adapter to allow the use of ordinary
+// function as SpotGenesis mutator.
+type SpotGenesisFunc func(context.Context, *ent.SpotGenesisMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f SpotGenesisFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.SpotGenesisMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SpotGenesisMutation", m)
+}
+
 // Condition is a hook condition function.
 type Condition func(context.Context, ent.Mutation) bool
 

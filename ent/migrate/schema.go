@@ -56,10 +56,39 @@ var (
 			},
 		},
 	}
+	// RewardsClaimsColumns holds the columns for the "rewards_claims" table.
+	RewardsClaimsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "amount", Type: field.TypeString},
+		{Name: "time", Type: field.TypeInt64},
+		{Name: "address", Type: field.TypeString},
+	}
+	// RewardsClaimsTable holds the schema information for the "rewards_claims" table.
+	RewardsClaimsTable = &schema.Table{
+		Name:       "rewards_claims",
+		Columns:    RewardsClaimsColumns,
+		PrimaryKey: []*schema.Column{RewardsClaimsColumns[0]},
+	}
+	// SpotGenesesColumns holds the columns for the "spot_geneses" table.
+	SpotGenesesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "coin", Type: field.TypeString},
+		{Name: "amount", Type: field.TypeString},
+		{Name: "time", Type: field.TypeInt64},
+		{Name: "address", Type: field.TypeString},
+	}
+	// SpotGenesesTable holds the schema information for the "spot_geneses" table.
+	SpotGenesesTable = &schema.Table{
+		Name:       "spot_geneses",
+		Columns:    SpotGenesesColumns,
+		PrimaryKey: []*schema.Column{SpotGenesesColumns[0]},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		FillsTable,
 		FundingsTable,
+		RewardsClaimsTable,
+		SpotGenesesTable,
 	}
 )
 

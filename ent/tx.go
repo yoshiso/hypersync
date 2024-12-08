@@ -16,6 +16,10 @@ type Tx struct {
 	Fill *FillClient
 	// Funding is the client for interacting with the Funding builders.
 	Funding *FundingClient
+	// RewardsClaim is the client for interacting with the RewardsClaim builders.
+	RewardsClaim *RewardsClaimClient
+	// SpotGenesis is the client for interacting with the SpotGenesis builders.
+	SpotGenesis *SpotGenesisClient
 
 	// lazily loaded.
 	client     *Client
@@ -149,6 +153,8 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Fill = NewFillClient(tx.config)
 	tx.Funding = NewFundingClient(tx.config)
+	tx.RewardsClaim = NewRewardsClaimClient(tx.config)
+	tx.SpotGenesis = NewSpotGenesisClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

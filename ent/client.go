@@ -16,6 +16,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/yoshiso/hypersync/ent/fill"
 	"github.com/yoshiso/hypersync/ent/funding"
+	"github.com/yoshiso/hypersync/ent/rewardsclaim"
+	"github.com/yoshiso/hypersync/ent/spotgenesis"
 )
 
 // Client is the client that holds all ent builders.
@@ -27,6 +29,10 @@ type Client struct {
 	Fill *FillClient
 	// Funding is the client for interacting with the Funding builders.
 	Funding *FundingClient
+	// RewardsClaim is the client for interacting with the RewardsClaim builders.
+	RewardsClaim *RewardsClaimClient
+	// SpotGenesis is the client for interacting with the SpotGenesis builders.
+	SpotGenesis *SpotGenesisClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -40,6 +46,8 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Fill = NewFillClient(c.config)
 	c.Funding = NewFundingClient(c.config)
+	c.RewardsClaim = NewRewardsClaimClient(c.config)
+	c.SpotGenesis = NewSpotGenesisClient(c.config)
 }
 
 type (
@@ -130,10 +138,12 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:     ctx,
-		config:  cfg,
-		Fill:    NewFillClient(cfg),
-		Funding: NewFundingClient(cfg),
+		ctx:          ctx,
+		config:       cfg,
+		Fill:         NewFillClient(cfg),
+		Funding:      NewFundingClient(cfg),
+		RewardsClaim: NewRewardsClaimClient(cfg),
+		SpotGenesis:  NewSpotGenesisClient(cfg),
 	}, nil
 }
 
@@ -151,10 +161,12 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:     ctx,
-		config:  cfg,
-		Fill:    NewFillClient(cfg),
-		Funding: NewFundingClient(cfg),
+		ctx:          ctx,
+		config:       cfg,
+		Fill:         NewFillClient(cfg),
+		Funding:      NewFundingClient(cfg),
+		RewardsClaim: NewRewardsClaimClient(cfg),
+		SpotGenesis:  NewSpotGenesisClient(cfg),
 	}, nil
 }
 
@@ -185,6 +197,8 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	c.Fill.Use(hooks...)
 	c.Funding.Use(hooks...)
+	c.RewardsClaim.Use(hooks...)
+	c.SpotGenesis.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
@@ -192,6 +206,8 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Fill.Intercept(interceptors...)
 	c.Funding.Intercept(interceptors...)
+	c.RewardsClaim.Intercept(interceptors...)
+	c.SpotGenesis.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -201,6 +217,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Fill.mutate(ctx, m)
 	case *FundingMutation:
 		return c.Funding.mutate(ctx, m)
+	case *RewardsClaimMutation:
+		return c.RewardsClaim.mutate(ctx, m)
+	case *SpotGenesisMutation:
+		return c.SpotGenesis.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -472,12 +492,278 @@ func (c *FundingClient) mutate(ctx context.Context, m *FundingMutation) (Value, 
 	}
 }
 
+// RewardsClaimClient is a client for the RewardsClaim schema.
+type RewardsClaimClient struct {
+	config
+}
+
+// NewRewardsClaimClient returns a client for the RewardsClaim from the given config.
+func NewRewardsClaimClient(c config) *RewardsClaimClient {
+	return &RewardsClaimClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `rewardsclaim.Hooks(f(g(h())))`.
+func (c *RewardsClaimClient) Use(hooks ...Hook) {
+	c.hooks.RewardsClaim = append(c.hooks.RewardsClaim, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `rewardsclaim.Intercept(f(g(h())))`.
+func (c *RewardsClaimClient) Intercept(interceptors ...Interceptor) {
+	c.inters.RewardsClaim = append(c.inters.RewardsClaim, interceptors...)
+}
+
+// Create returns a builder for creating a RewardsClaim entity.
+func (c *RewardsClaimClient) Create() *RewardsClaimCreate {
+	mutation := newRewardsClaimMutation(c.config, OpCreate)
+	return &RewardsClaimCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of RewardsClaim entities.
+func (c *RewardsClaimClient) CreateBulk(builders ...*RewardsClaimCreate) *RewardsClaimCreateBulk {
+	return &RewardsClaimCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *RewardsClaimClient) MapCreateBulk(slice any, setFunc func(*RewardsClaimCreate, int)) *RewardsClaimCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &RewardsClaimCreateBulk{err: fmt.Errorf("calling to RewardsClaimClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*RewardsClaimCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &RewardsClaimCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for RewardsClaim.
+func (c *RewardsClaimClient) Update() *RewardsClaimUpdate {
+	mutation := newRewardsClaimMutation(c.config, OpUpdate)
+	return &RewardsClaimUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *RewardsClaimClient) UpdateOne(rc *RewardsClaim) *RewardsClaimUpdateOne {
+	mutation := newRewardsClaimMutation(c.config, OpUpdateOne, withRewardsClaim(rc))
+	return &RewardsClaimUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *RewardsClaimClient) UpdateOneID(id int) *RewardsClaimUpdateOne {
+	mutation := newRewardsClaimMutation(c.config, OpUpdateOne, withRewardsClaimID(id))
+	return &RewardsClaimUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for RewardsClaim.
+func (c *RewardsClaimClient) Delete() *RewardsClaimDelete {
+	mutation := newRewardsClaimMutation(c.config, OpDelete)
+	return &RewardsClaimDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *RewardsClaimClient) DeleteOne(rc *RewardsClaim) *RewardsClaimDeleteOne {
+	return c.DeleteOneID(rc.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *RewardsClaimClient) DeleteOneID(id int) *RewardsClaimDeleteOne {
+	builder := c.Delete().Where(rewardsclaim.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &RewardsClaimDeleteOne{builder}
+}
+
+// Query returns a query builder for RewardsClaim.
+func (c *RewardsClaimClient) Query() *RewardsClaimQuery {
+	return &RewardsClaimQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeRewardsClaim},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a RewardsClaim entity by its id.
+func (c *RewardsClaimClient) Get(ctx context.Context, id int) (*RewardsClaim, error) {
+	return c.Query().Where(rewardsclaim.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *RewardsClaimClient) GetX(ctx context.Context, id int) *RewardsClaim {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *RewardsClaimClient) Hooks() []Hook {
+	return c.hooks.RewardsClaim
+}
+
+// Interceptors returns the client interceptors.
+func (c *RewardsClaimClient) Interceptors() []Interceptor {
+	return c.inters.RewardsClaim
+}
+
+func (c *RewardsClaimClient) mutate(ctx context.Context, m *RewardsClaimMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&RewardsClaimCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&RewardsClaimUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&RewardsClaimUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&RewardsClaimDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown RewardsClaim mutation op: %q", m.Op())
+	}
+}
+
+// SpotGenesisClient is a client for the SpotGenesis schema.
+type SpotGenesisClient struct {
+	config
+}
+
+// NewSpotGenesisClient returns a client for the SpotGenesis from the given config.
+func NewSpotGenesisClient(c config) *SpotGenesisClient {
+	return &SpotGenesisClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `spotgenesis.Hooks(f(g(h())))`.
+func (c *SpotGenesisClient) Use(hooks ...Hook) {
+	c.hooks.SpotGenesis = append(c.hooks.SpotGenesis, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `spotgenesis.Intercept(f(g(h())))`.
+func (c *SpotGenesisClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SpotGenesis = append(c.inters.SpotGenesis, interceptors...)
+}
+
+// Create returns a builder for creating a SpotGenesis entity.
+func (c *SpotGenesisClient) Create() *SpotGenesisCreate {
+	mutation := newSpotGenesisMutation(c.config, OpCreate)
+	return &SpotGenesisCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SpotGenesis entities.
+func (c *SpotGenesisClient) CreateBulk(builders ...*SpotGenesisCreate) *SpotGenesisCreateBulk {
+	return &SpotGenesisCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SpotGenesisClient) MapCreateBulk(slice any, setFunc func(*SpotGenesisCreate, int)) *SpotGenesisCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SpotGenesisCreateBulk{err: fmt.Errorf("calling to SpotGenesisClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SpotGenesisCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SpotGenesisCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SpotGenesis.
+func (c *SpotGenesisClient) Update() *SpotGenesisUpdate {
+	mutation := newSpotGenesisMutation(c.config, OpUpdate)
+	return &SpotGenesisUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SpotGenesisClient) UpdateOne(sg *SpotGenesis) *SpotGenesisUpdateOne {
+	mutation := newSpotGenesisMutation(c.config, OpUpdateOne, withSpotGenesis(sg))
+	return &SpotGenesisUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SpotGenesisClient) UpdateOneID(id int) *SpotGenesisUpdateOne {
+	mutation := newSpotGenesisMutation(c.config, OpUpdateOne, withSpotGenesisID(id))
+	return &SpotGenesisUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SpotGenesis.
+func (c *SpotGenesisClient) Delete() *SpotGenesisDelete {
+	mutation := newSpotGenesisMutation(c.config, OpDelete)
+	return &SpotGenesisDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SpotGenesisClient) DeleteOne(sg *SpotGenesis) *SpotGenesisDeleteOne {
+	return c.DeleteOneID(sg.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SpotGenesisClient) DeleteOneID(id int) *SpotGenesisDeleteOne {
+	builder := c.Delete().Where(spotgenesis.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SpotGenesisDeleteOne{builder}
+}
+
+// Query returns a query builder for SpotGenesis.
+func (c *SpotGenesisClient) Query() *SpotGenesisQuery {
+	return &SpotGenesisQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSpotGenesis},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SpotGenesis entity by its id.
+func (c *SpotGenesisClient) Get(ctx context.Context, id int) (*SpotGenesis, error) {
+	return c.Query().Where(spotgenesis.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SpotGenesisClient) GetX(ctx context.Context, id int) *SpotGenesis {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *SpotGenesisClient) Hooks() []Hook {
+	return c.hooks.SpotGenesis
+}
+
+// Interceptors returns the client interceptors.
+func (c *SpotGenesisClient) Interceptors() []Interceptor {
+	return c.inters.SpotGenesis
+}
+
+func (c *SpotGenesisClient) mutate(ctx context.Context, m *SpotGenesisMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SpotGenesisCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SpotGenesisUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SpotGenesisUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SpotGenesisDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SpotGenesis mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Fill, Funding []ent.Hook
+		Fill, Funding, RewardsClaim, SpotGenesis []ent.Hook
 	}
 	inters struct {
-		Fill, Funding []ent.Interceptor
+		Fill, Funding, RewardsClaim, SpotGenesis []ent.Interceptor
 	}
 )

@@ -95,6 +95,30 @@ type HTTPUserFunding struct {
 	Delta HTTPUserFundingDelta `json:"delta"`
 }
 
+type WSUserNonFundingLedgerUpdate struct {
+	Time int64 `json:"time"`
+	Hash string `json:"hash"`
+	Delta WSUserNonFundingLedgerUpdateDelta `json:"delta"`
+}
+
+type WSUserNonFundingLedgerUpdateDelta struct {
+	Type string `json:"type"`
+	Amount string `json:"amount"`
+	Token string `json: "token"`
+}
+
+type WSUserNonFundingLedgerUpdates struct {
+	IsSnapshot bool `json:"isSnapshot"`
+	User string `json:"user"`
+	NonFundingLedgerUpdates []WSUserNonFundingLedgerUpdate `json:"nonFundingLedgerUpdates"`
+}
+
+type WSUserNonFundingLedgerUpdatesResponse struct {
+	Channel string	`json:"channel"`
+	Data    WSUserNonFundingLedgerUpdates `json:"data"`
+}
+
+
 type Msg struct {
 	Channel string `json:"channel"`
 }
@@ -154,6 +178,10 @@ func Conn(userAddress string) (chan []byte) {
 	}
 
 	if err := c.WriteJSON(WSRequest{Method: "subscribe", Subscription: UserSubscription{User: userAddress, Type: "userFundings"} }); err != nil {
+		fmt.Println(fmt.Errorf("ws.WriteJSON error %v", err))
+	}
+
+	if err := c.WriteJSON(WSRequest{Method: "subscribe", Subscription: UserSubscription{User: userAddress, Type: "userNonFundingLedgerUpdates"} }); err != nil {
 		fmt.Println(fmt.Errorf("ws.WriteJSON error %v", err))
 	}
 
@@ -217,6 +245,26 @@ func fetchUserFundings(userAddress string) ([]WsUserFunding, error) {
 	}
 
 	return fundings, nil
+}
+
+func fetchUserNonFundingLedgerUpdates(userAddress string) ([]WSUserNonFundingLedgerUpdate, error) {
+	jsonBody, _ := json.Marshal(HTTPUserRequest{User: userAddress, Type: "userNonFundingLedgerUpdates"})
+
+	res, err := http.Post("https://api.hyperliquid.xyz/info", "application/json", bytes.NewBuffer(jsonBody))
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+
+	updates := []WSUserNonFundingLedgerUpdate{}
+
+	json.Unmarshal(body, &updates)
+
+	return updates, nil
 }
 
 
@@ -319,7 +367,7 @@ func run(userAddress string, verbose bool, output_file string) {
 			
 			if verbose {
 				fmt.Println(fmt.Sprintf(
-					"Coin: %s, Px: %s, Sz: %s, Side: %s, Dir: %s, Fee: %s, FeeToken: %s",
+					"[Fill] Coin: %s, Px: %s, Sz: %s, Side: %s, Dir: %s, Fee: %s, FeeToken: %s",
 					fill.Coin, fill.Px, fill.Sz, fill.Side, fill.Dir, fill.Fee, fill.FeeToken,
 				))
 			}
@@ -349,13 +397,54 @@ func run(userAddress string, verbose bool, output_file string) {
 			
 			if verbose {
 				fmt.Println(fmt.Sprintf(
-					"Coin: %s, USDC: %s, Time: %v",
+					"[Funding] Coin: %s, USDC: %s, Time: %v",
 					funding.Coin, funding.Usdc, funding.Time,
 				))
 			}			
 		}
 		fmt.Println("Complete loading funding via API")
-		
+
+		fmt.Println("Loading UserNonFundingLedgerUpdates via REST API")
+		initUpdates, err := fetchUserNonFundingLedgerUpdates(userAddress)
+		if err != nil {
+			fmt.Println("failed to load UserNonFundingLedgerUpdates via API, and retrying... (%v)", err)
+			time.Sleep(time.Second * 5)
+			continue
+		}
+
+		for _, update := range initUpdates {
+			switch update.Delta.Type {
+			case "spotGenesis":
+				wip := client.SpotGenesis.Create().
+					SetAmount(update.Delta.Amount).
+					SetCoin(update.Delta.Token).
+					SetTime(update.Time).
+					SetAddress(userAddress)
+
+				wip.OnConflict().UpdateNewValues().IDX(ctx)
+				if verbose {
+					fmt.Println(fmt.Sprintf(
+						"[SpotGenesis] Coin: %s, Amount: %s, Time: %v",
+						update.Delta.Token, update.Delta.Amount, update.Time,
+					))
+				}				
+			case "rewardsClaim":
+				wip := client.RewardsClaim.Create().
+					SetAmount(update.Delta.Amount).
+					SetTime(update.Time).
+					SetAddress(userAddress)
+				wip.OnConflict().UpdateNewValues().IDX(ctx)
+				if verbose {
+					fmt.Println(fmt.Sprintf(
+						"[RewardsClaim] Amount: %s, Time: %v",
+						update.Delta.Amount, update.Time,
+					))
+				}				
+			}
+		}
+
+		fmt.Println("Complete loading UserNonFundingLedgerUpdates via API")
+
 		Loop:
 
 			for {
@@ -404,7 +493,7 @@ func run(userAddress string, verbose bool, output_file string) {
 							
 							if verbose {
 								fmt.Println(fmt.Sprintf(
-									"Coin: %s, Px: %s, Sz: %s, Side: %s, Dir: %s, Fee: %s, FeeToken: %s",
+									"[Fill] Coin: %s, Px: %s, Sz: %s, Side: %s, Dir: %s, Fee: %s, FeeToken: %s",
 									fill.Coin, fill.Px, fill.Sz, fill.Side, fill.Dir, fill.Fee, fill.FeeToken,
 								))
 							}			
@@ -430,10 +519,47 @@ func run(userAddress string, verbose bool, output_file string) {
 							
 							if verbose {
 								fmt.Println(fmt.Sprintf(
-									"Coin: %s, USDC: %s, Time: %v",
+									"[Funding] Coin: %s, USDC: %s, Time: %v",
 									funding.Coin, funding.Usdc, funding.Time,
 								))
 							}			
+						}
+
+					case "userNonFundingLedgerUpdates":
+						data := &WSUserNonFundingLedgerUpdatesResponse{}
+						if err := json.Unmarshal(msg, &data); err != nil {
+							fmt.Println("failed to unmarshal JSON: %v", err)
+							break
+						}
+						for _, update := range data.Data.NonFundingLedgerUpdates {
+							switch update.Delta.Type {
+							case "spotGenesis":
+								wip := client.SpotGenesis.Create().
+									SetAmount(update.Delta.Amount).
+									SetCoin(update.Delta.Token).
+									SetTime(update.Time).
+									SetAddress(userAddress)
+
+								wip.OnConflict().UpdateNewValues().IDX(ctx)
+								if verbose {
+									fmt.Println(fmt.Sprintf(
+										"[SpotGenesis] Coin: %s, Amount: %s, Time: %v",
+										update.Delta.Token, update.Delta.Amount, update.Time,
+									))
+								}				
+							case "rewardsClaim":
+								wip := client.RewardsClaim.Create().
+									SetAmount(update.Delta.Amount).
+									SetTime(update.Time).
+									SetAddress(userAddress)
+								wip.OnConflict().UpdateNewValues().IDX(ctx)
+								if verbose {
+									fmt.Println(fmt.Sprintf(
+										"[RewardsClaim] Amount: %s, Time: %v",
+										update.Delta.Amount, update.Time,
+									))
+								}				
+							}							
 						}
 					case "subscriptionResponse":
 						continue

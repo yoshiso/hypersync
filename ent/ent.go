@@ -14,6 +14,8 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/yoshiso/hypersync/ent/fill"
 	"github.com/yoshiso/hypersync/ent/funding"
+	"github.com/yoshiso/hypersync/ent/rewardsclaim"
+	"github.com/yoshiso/hypersync/ent/spotgenesis"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -74,8 +76,10 @@ var (
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			fill.Table:    fill.ValidColumn,
-			funding.Table: funding.ValidColumn,
+			fill.Table:         fill.ValidColumn,
+			funding.Table:      funding.ValidColumn,
+			rewardsclaim.Table: rewardsclaim.ValidColumn,
+			spotgenesis.Table:  spotgenesis.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)

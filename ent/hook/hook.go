@@ -21,6 +21,18 @@ func (f FillFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FillMutation", m)
 }
 
+// The FundingFunc type is an adapter to allow the use of ordinary
+// function as Funding mutator.
+type FundingFunc func(context.Context, *ent.FundingMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f FundingFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.FundingMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FundingMutation", m)
+}
+
 // Condition is a hook condition function.
 type Condition func(context.Context, ent.Mutation) bool
 

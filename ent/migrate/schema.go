@@ -33,9 +33,33 @@ var (
 		Columns:    FillsColumns,
 		PrimaryKey: []*schema.Column{FillsColumns[0]},
 	}
+	// FundingsColumns holds the columns for the "fundings" table.
+	FundingsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "time", Type: field.TypeInt64},
+		{Name: "coin", Type: field.TypeString},
+		{Name: "usdc", Type: field.TypeString},
+		{Name: "szi", Type: field.TypeString},
+		{Name: "funding_rate", Type: field.TypeString},
+		{Name: "address", Type: field.TypeString},
+	}
+	// FundingsTable holds the schema information for the "fundings" table.
+	FundingsTable = &schema.Table{
+		Name:       "fundings",
+		Columns:    FundingsColumns,
+		PrimaryKey: []*schema.Column{FundingsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "funding_address_time_coin",
+				Unique:  true,
+				Columns: []*schema.Column{FundingsColumns[6], FundingsColumns[1], FundingsColumns[2]},
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		FillsTable,
+		FundingsTable,
 	}
 )
 

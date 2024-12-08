@@ -19,10 +19,10 @@ import (
 
 type WSRequest struct {
 	Method       string               `json:"method"`
-	Subscription UserFillSubscription `json:"subscription"`
+	Subscription UserSubscription `json:"subscription"`
 }
 
-type UserFillSubscription struct {
+type UserSubscription struct {
 	Type string `json:"type"`
 	User string `json:"user"`
 }
@@ -31,6 +31,14 @@ type FillLiquidation struct {
 	LiquidatedUser *string `json:"liquidatedUser"`
 	MarkPx string `json:"markPx"`
 	Method string `json:"method"`	
+}
+
+type WsUserFunding struct {
+	Time int64 `json:"time"`
+	Coin string `json:"coin"`
+	Usdc string `json:"usdc"`
+	Szi string `json:"szi"`
+	FundingRate string `json:"fundingRate"`
 }
 
 type WsFill struct {
@@ -52,15 +60,39 @@ type WsFill struct {
 	BuilderFee *string `json:"builderFee"`
 }
 
+type WsUserFundings struct {
+	IsSnapshot bool `json:"isSnapshot"`
+	User string `json:"user"`
+	Fundings []WsUserFunding `json:"fundings"`
+}
+
 type WsUserFills struct {
 	IsSnapshot bool `json:"isSnapshot"`
 	User string `json:"user"`
 	Fills []WsFill `json:"fills"`
 }
 
-type WSResponse struct {
+type WsUserFillsResponse struct {
 	Channel string	`json:"channel"`
 	Data    WsUserFills `json:"data"`
+}
+
+type WsUserFundingsResponse struct {
+	Channel string	`json:"channel"`
+	Data    WsUserFundings `json:"data"`
+}
+
+type HTTPUserFundingDelta struct {
+	Coin string `json:"coin"`
+	Usdc string `json:"usdc"`
+	Szi string `json:"szi"`
+	FundingRate string `json:"fundingRate"`
+}
+
+type HTTPUserFunding struct {
+	Time int64 `json:"time"`
+	Hash string `json:"hash"`
+	Delta HTTPUserFundingDelta `json:"delta"`
 }
 
 type Msg struct {
@@ -117,7 +149,11 @@ func Conn(userAddress string) (chan []byte) {
 		}
 	}()
 
-	if err := c.WriteJSON(WSRequest{Method: "subscribe", Subscription: UserFillSubscription{User: userAddress, Type: "userFills"} }); err != nil {
+	if err := c.WriteJSON(WSRequest{Method: "subscribe", Subscription: UserSubscription{User: userAddress, Type: "userFills"} }); err != nil {
+		fmt.Println(fmt.Errorf("ws.WriteJSON error %v", err))
+	}
+
+	if err := c.WriteJSON(WSRequest{Method: "subscribe", Subscription: UserSubscription{User: userAddress, Type: "userFundings"} }); err != nil {
 		fmt.Println(fmt.Errorf("ws.WriteJSON error %v", err))
 	}
 
@@ -125,13 +161,13 @@ func Conn(userAddress string) (chan []byte) {
 }
 
 
-type HTTPUserFillsRequest struct {
+type HTTPUserRequest struct {
 	User   string    `json:"user"`
 	Type   string    `json:"type"`
 }
 
 func fetchUserFills(userAddress string) ([]WsFill, error) {
-	jsonBody, _ := json.Marshal(HTTPUserFillsRequest{User: userAddress, Type: "userFills"})
+	jsonBody, _ := json.Marshal(HTTPUserRequest{User: userAddress, Type: "userFills"})
 
 	res, err := http.Post("https://api.hyperliquid.xyz/info", "application/json", bytes.NewBuffer(jsonBody))
 
@@ -148,6 +184,39 @@ func fetchUserFills(userAddress string) ([]WsFill, error) {
 	json.Unmarshal(body, &fills)
 
 	return fills, nil
+}
+
+
+func fetchUserFundings(userAddress string) ([]WsUserFunding, error) {
+	jsonBody, _ := json.Marshal(HTTPUserRequest{User: userAddress, Type: "userFunding"})
+
+	res, err := http.Post("https://api.hyperliquid.xyz/info", "application/json", bytes.NewBuffer(jsonBody))
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+
+	httpFundings := []HTTPUserFunding{}
+
+	json.Unmarshal(body, &httpFundings)
+
+	fundings := []WsUserFunding{}
+
+	for _, funding := range httpFundings {
+		fundings = append(fundings, WsUserFunding{
+			Coin: funding.Delta.Coin,
+			Time: funding.Time,
+			Usdc: funding.Delta.Usdc,
+			Szi: funding.Delta.Szi,
+			FundingRate: funding.Delta.FundingRate,
+		})
+	}
+
+	return fundings, nil
 }
 
 
@@ -256,7 +325,36 @@ func run(userAddress string, verbose bool, output_file string) {
 			}
 		}
 
-		fmt.Println("Complete loading fills via API, and starting websocket sync")
+		fmt.Println("Complete loading fills via API")
+
+		fmt.Println("Loading fundings via REST API")
+		initFundings, err := fetchUserFundings(userAddress)
+		if err != nil {
+			fmt.Println("failed to load fundings via API, and retrying... (%v)", err)
+			time.Sleep(time.Second * 5)
+			continue
+		}
+
+		for _, funding := range initFundings {
+
+			wip := client.Funding.Create().
+				SetCoin(funding.Coin).
+				SetFundingRate(funding.FundingRate).
+				SetSzi(funding.Szi).
+				SetUsdc(funding.Usdc).
+				SetTime(funding.Time).
+				SetAddress(userAddress)
+
+				wip.OnConflict().UpdateNewValues().IDX(ctx)
+			
+			if verbose {
+				fmt.Println(fmt.Sprintf(
+					"Coin: %s, USDC: %s, Time: %v",
+					funding.Coin, funding.Usdc, funding.Time,
+				))
+			}			
+		}
+		fmt.Println("Complete loading funding via API")
 		
 		Loop:
 
@@ -273,7 +371,7 @@ func run(userAddress string, verbose bool, output_file string) {
 					
 					switch ch.Channel {
 					case "userFills":
-						data := &WSResponse{}
+						data := &WsUserFillsResponse{}
 
 						if err := json.Unmarshal(msg, &data); err != nil {
 							fmt.Println("failed to unmarshal JSON: %v", err)
@@ -311,7 +409,32 @@ func run(userAddress string, verbose bool, output_file string) {
 								))
 							}			
 						}
+					case "userFundings":
+						data := &WsUserFundingsResponse{}
+						if err := json.Unmarshal(msg, &data); err != nil {
+							fmt.Println("failed to unmarshal JSON: %v", err)
+							break
+						}
 
+						for _, funding := range data.Data.Fundings {
+
+							wip := client.Funding.Create().
+								SetCoin(funding.Coin).
+								SetFundingRate(funding.FundingRate).
+								SetSzi(funding.Szi).
+								SetUsdc(funding.Usdc).
+								SetTime(funding.Time).
+								SetAddress(userAddress)
+
+								wip.OnConflict().UpdateNewValues().IDX(ctx)
+							
+							if verbose {
+								fmt.Println(fmt.Sprintf(
+									"Coin: %s, USDC: %s, Time: %v",
+									funding.Coin, funding.Usdc, funding.Time,
+								))
+							}			
+						}
 					case "subscriptionResponse":
 						continue
 					case "pong":

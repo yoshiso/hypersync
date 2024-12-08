@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// Fill is the client for interacting with the Fill builders.
 	Fill *FillClient
+	// Funding is the client for interacting with the Funding builders.
+	Funding *FundingClient
 
 	// lazily loaded.
 	client     *Client
@@ -146,6 +148,7 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Fill = NewFillClient(tx.config)
+	tx.Funding = NewFundingClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

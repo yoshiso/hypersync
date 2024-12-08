@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/yoshiso/hypersync/ent/fill"
+	"github.com/yoshiso/hypersync/ent/funding"
 	"github.com/yoshiso/hypersync/ent/predicate"
 )
 
@@ -23,7 +24,8 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeFill = "Fill"
+	TypeFill    = "Fill"
+	TypeFunding = "Funding"
 )
 
 // FillMutation represents an operation that mutates the Fill nodes in the graph.
@@ -1230,4 +1232,636 @@ func (m *FillMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *FillMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Fill edge %s", name)
+}
+
+// FundingMutation represents an operation that mutates the Funding nodes in the graph.
+type FundingMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	time          *int64
+	addtime       *int64
+	coin          *string
+	usdc          *string
+	szi           *string
+	funding_rate  *string
+	address       *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*Funding, error)
+	predicates    []predicate.Funding
+}
+
+var _ ent.Mutation = (*FundingMutation)(nil)
+
+// fundingOption allows management of the mutation configuration using functional options.
+type fundingOption func(*FundingMutation)
+
+// newFundingMutation creates new mutation for the Funding entity.
+func newFundingMutation(c config, op Op, opts ...fundingOption) *FundingMutation {
+	m := &FundingMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeFunding,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withFundingID sets the ID field of the mutation.
+func withFundingID(id int) fundingOption {
+	return func(m *FundingMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Funding
+		)
+		m.oldValue = func(ctx context.Context) (*Funding, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Funding.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withFunding sets the old Funding of the mutation.
+func withFunding(node *Funding) fundingOption {
+	return func(m *FundingMutation) {
+		m.oldValue = func(context.Context) (*Funding, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m FundingMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m FundingMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *FundingMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *FundingMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Funding.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetTime sets the "time" field.
+func (m *FundingMutation) SetTime(i int64) {
+	m.time = &i
+	m.addtime = nil
+}
+
+// Time returns the value of the "time" field in the mutation.
+func (m *FundingMutation) Time() (r int64, exists bool) {
+	v := m.time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTime returns the old "time" field's value of the Funding entity.
+// If the Funding object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FundingMutation) OldTime(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTime: %w", err)
+	}
+	return oldValue.Time, nil
+}
+
+// AddTime adds i to the "time" field.
+func (m *FundingMutation) AddTime(i int64) {
+	if m.addtime != nil {
+		*m.addtime += i
+	} else {
+		m.addtime = &i
+	}
+}
+
+// AddedTime returns the value that was added to the "time" field in this mutation.
+func (m *FundingMutation) AddedTime() (r int64, exists bool) {
+	v := m.addtime
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTime resets all changes to the "time" field.
+func (m *FundingMutation) ResetTime() {
+	m.time = nil
+	m.addtime = nil
+}
+
+// SetCoin sets the "coin" field.
+func (m *FundingMutation) SetCoin(s string) {
+	m.coin = &s
+}
+
+// Coin returns the value of the "coin" field in the mutation.
+func (m *FundingMutation) Coin() (r string, exists bool) {
+	v := m.coin
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCoin returns the old "coin" field's value of the Funding entity.
+// If the Funding object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FundingMutation) OldCoin(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCoin is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCoin requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCoin: %w", err)
+	}
+	return oldValue.Coin, nil
+}
+
+// ResetCoin resets all changes to the "coin" field.
+func (m *FundingMutation) ResetCoin() {
+	m.coin = nil
+}
+
+// SetUsdc sets the "usdc" field.
+func (m *FundingMutation) SetUsdc(s string) {
+	m.usdc = &s
+}
+
+// Usdc returns the value of the "usdc" field in the mutation.
+func (m *FundingMutation) Usdc() (r string, exists bool) {
+	v := m.usdc
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUsdc returns the old "usdc" field's value of the Funding entity.
+// If the Funding object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FundingMutation) OldUsdc(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUsdc is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUsdc requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUsdc: %w", err)
+	}
+	return oldValue.Usdc, nil
+}
+
+// ResetUsdc resets all changes to the "usdc" field.
+func (m *FundingMutation) ResetUsdc() {
+	m.usdc = nil
+}
+
+// SetSzi sets the "szi" field.
+func (m *FundingMutation) SetSzi(s string) {
+	m.szi = &s
+}
+
+// Szi returns the value of the "szi" field in the mutation.
+func (m *FundingMutation) Szi() (r string, exists bool) {
+	v := m.szi
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSzi returns the old "szi" field's value of the Funding entity.
+// If the Funding object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FundingMutation) OldSzi(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSzi is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSzi requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSzi: %w", err)
+	}
+	return oldValue.Szi, nil
+}
+
+// ResetSzi resets all changes to the "szi" field.
+func (m *FundingMutation) ResetSzi() {
+	m.szi = nil
+}
+
+// SetFundingRate sets the "funding_rate" field.
+func (m *FundingMutation) SetFundingRate(s string) {
+	m.funding_rate = &s
+}
+
+// FundingRate returns the value of the "funding_rate" field in the mutation.
+func (m *FundingMutation) FundingRate() (r string, exists bool) {
+	v := m.funding_rate
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFundingRate returns the old "funding_rate" field's value of the Funding entity.
+// If the Funding object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FundingMutation) OldFundingRate(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFundingRate is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFundingRate requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFundingRate: %w", err)
+	}
+	return oldValue.FundingRate, nil
+}
+
+// ResetFundingRate resets all changes to the "funding_rate" field.
+func (m *FundingMutation) ResetFundingRate() {
+	m.funding_rate = nil
+}
+
+// SetAddress sets the "address" field.
+func (m *FundingMutation) SetAddress(s string) {
+	m.address = &s
+}
+
+// Address returns the value of the "address" field in the mutation.
+func (m *FundingMutation) Address() (r string, exists bool) {
+	v := m.address
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAddress returns the old "address" field's value of the Funding entity.
+// If the Funding object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FundingMutation) OldAddress(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAddress is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAddress requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAddress: %w", err)
+	}
+	return oldValue.Address, nil
+}
+
+// ResetAddress resets all changes to the "address" field.
+func (m *FundingMutation) ResetAddress() {
+	m.address = nil
+}
+
+// Where appends a list predicates to the FundingMutation builder.
+func (m *FundingMutation) Where(ps ...predicate.Funding) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the FundingMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *FundingMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Funding, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *FundingMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *FundingMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Funding).
+func (m *FundingMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *FundingMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.time != nil {
+		fields = append(fields, funding.FieldTime)
+	}
+	if m.coin != nil {
+		fields = append(fields, funding.FieldCoin)
+	}
+	if m.usdc != nil {
+		fields = append(fields, funding.FieldUsdc)
+	}
+	if m.szi != nil {
+		fields = append(fields, funding.FieldSzi)
+	}
+	if m.funding_rate != nil {
+		fields = append(fields, funding.FieldFundingRate)
+	}
+	if m.address != nil {
+		fields = append(fields, funding.FieldAddress)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *FundingMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case funding.FieldTime:
+		return m.Time()
+	case funding.FieldCoin:
+		return m.Coin()
+	case funding.FieldUsdc:
+		return m.Usdc()
+	case funding.FieldSzi:
+		return m.Szi()
+	case funding.FieldFundingRate:
+		return m.FundingRate()
+	case funding.FieldAddress:
+		return m.Address()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *FundingMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case funding.FieldTime:
+		return m.OldTime(ctx)
+	case funding.FieldCoin:
+		return m.OldCoin(ctx)
+	case funding.FieldUsdc:
+		return m.OldUsdc(ctx)
+	case funding.FieldSzi:
+		return m.OldSzi(ctx)
+	case funding.FieldFundingRate:
+		return m.OldFundingRate(ctx)
+	case funding.FieldAddress:
+		return m.OldAddress(ctx)
+	}
+	return nil, fmt.Errorf("unknown Funding field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *FundingMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case funding.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTime(v)
+		return nil
+	case funding.FieldCoin:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCoin(v)
+		return nil
+	case funding.FieldUsdc:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUsdc(v)
+		return nil
+	case funding.FieldSzi:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSzi(v)
+		return nil
+	case funding.FieldFundingRate:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFundingRate(v)
+		return nil
+	case funding.FieldAddress:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAddress(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Funding field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *FundingMutation) AddedFields() []string {
+	var fields []string
+	if m.addtime != nil {
+		fields = append(fields, funding.FieldTime)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *FundingMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case funding.FieldTime:
+		return m.AddedTime()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *FundingMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case funding.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTime(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Funding numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *FundingMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *FundingMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *FundingMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Funding nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *FundingMutation) ResetField(name string) error {
+	switch name {
+	case funding.FieldTime:
+		m.ResetTime()
+		return nil
+	case funding.FieldCoin:
+		m.ResetCoin()
+		return nil
+	case funding.FieldUsdc:
+		m.ResetUsdc()
+		return nil
+	case funding.FieldSzi:
+		m.ResetSzi()
+		return nil
+	case funding.FieldFundingRate:
+		m.ResetFundingRate()
+		return nil
+	case funding.FieldAddress:
+		m.ResetAddress()
+		return nil
+	}
+	return fmt.Errorf("unknown Funding field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *FundingMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *FundingMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *FundingMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *FundingMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *FundingMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *FundingMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *FundingMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown Funding unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *FundingMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown Funding edge %s", name)
 }

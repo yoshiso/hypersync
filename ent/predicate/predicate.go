@@ -8,3 +8,6 @@ import (
 
 // Fill is the predicate function for fill builders.
 type Fill func(*sql.Selector)
+
+// Funding is the predicate function for funding builders.
+type Funding func(*sql.Selector)

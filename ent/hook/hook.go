@@ -33,6 +33,18 @@ func (f FundingFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FundingMutation", m)
 }
 
+// The InternalTransferFunc type is an adapter to allow the use of ordinary
+// function as InternalTransfer mutator.
+type InternalTransferFunc func(context.Context, *ent.InternalTransferMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f InternalTransferFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.InternalTransferMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.InternalTransferMutation", m)
+}
+
 // The RewardsClaimFunc type is an adapter to allow the use of ordinary
 // function as RewardsClaim mutator.
 type RewardsClaimFunc func(context.Context, *ent.RewardsClaimMutation) (ent.Value, error)
@@ -55,6 +67,18 @@ func (f SpotGenesisFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value,
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SpotGenesisMutation", m)
+}
+
+// The SpotTransferFunc type is an adapter to allow the use of ordinary
+// function as SpotTransfer mutator.
+type SpotTransferFunc func(context.Context, *ent.SpotTransferMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f SpotTransferFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.SpotTransferMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SpotTransferMutation", m)
 }
 
 // The VaultDeltaFunc type is an adapter to allow the use of ordinary

@@ -56,6 +56,29 @@ var (
 			},
 		},
 	}
+	// InternalTransfersColumns holds the columns for the "internal_transfers" table.
+	InternalTransfersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "user", Type: field.TypeString},
+		{Name: "destination", Type: field.TypeString},
+		{Name: "usdc", Type: field.TypeString},
+		{Name: "fee", Type: field.TypeString},
+		{Name: "time", Type: field.TypeInt64},
+		{Name: "address", Type: field.TypeString},
+	}
+	// InternalTransfersTable holds the schema information for the "internal_transfers" table.
+	InternalTransfersTable = &schema.Table{
+		Name:       "internal_transfers",
+		Columns:    InternalTransfersColumns,
+		PrimaryKey: []*schema.Column{InternalTransfersColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "internaltransfer_address_time_user_destination",
+				Unique:  true,
+				Columns: []*schema.Column{InternalTransfersColumns[6], InternalTransfersColumns[5], InternalTransfersColumns[1], InternalTransfersColumns[2]},
+			},
+		},
+	}
 	// RewardsClaimsColumns holds the columns for the "rewards_claims" table.
 	RewardsClaimsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -94,6 +117,30 @@ var (
 				Name:    "spotgenesis_address_time_coin",
 				Unique:  true,
 				Columns: []*schema.Column{SpotGenesesColumns[4], SpotGenesesColumns[3], SpotGenesesColumns[1]},
+			},
+		},
+	}
+	// SpotTransfersColumns holds the columns for the "spot_transfers" table.
+	SpotTransfersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "user", Type: field.TypeString},
+		{Name: "destination", Type: field.TypeString},
+		{Name: "token", Type: field.TypeString},
+		{Name: "amount", Type: field.TypeString},
+		{Name: "fee", Type: field.TypeString},
+		{Name: "time", Type: field.TypeInt64},
+		{Name: "address", Type: field.TypeString},
+	}
+	// SpotTransfersTable holds the schema information for the "spot_transfers" table.
+	SpotTransfersTable = &schema.Table{
+		Name:       "spot_transfers",
+		Columns:    SpotTransfersColumns,
+		PrimaryKey: []*schema.Column{SpotTransfersColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "spottransfer_address_time_token_user_destination",
+				Unique:  true,
+				Columns: []*schema.Column{SpotTransfersColumns[7], SpotTransfersColumns[6], SpotTransfersColumns[3], SpotTransfersColumns[1], SpotTransfersColumns[2]},
 			},
 		},
 	}
@@ -170,8 +217,10 @@ var (
 	Tables = []*schema.Table{
 		FillsTable,
 		FundingsTable,
+		InternalTransfersTable,
 		RewardsClaimsTable,
 		SpotGenesesTable,
+		SpotTransfersTable,
 		VaultDeltaTable,
 		VaultLeaderCommissionsTable,
 		VaultWithdrawalsTable,

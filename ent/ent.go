@@ -14,8 +14,10 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/yoshiso/hypersync/ent/fill"
 	"github.com/yoshiso/hypersync/ent/funding"
+	"github.com/yoshiso/hypersync/ent/internaltransfer"
 	"github.com/yoshiso/hypersync/ent/rewardsclaim"
 	"github.com/yoshiso/hypersync/ent/spotgenesis"
+	"github.com/yoshiso/hypersync/ent/spottransfer"
 	"github.com/yoshiso/hypersync/ent/vaultdelta"
 	"github.com/yoshiso/hypersync/ent/vaultleadercommission"
 	"github.com/yoshiso/hypersync/ent/vaultwithdrawal"
@@ -81,8 +83,10 @@ func checkColumn(table, column string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			fill.Table:                  fill.ValidColumn,
 			funding.Table:               funding.ValidColumn,
+			internaltransfer.Table:      internaltransfer.ValidColumn,
 			rewardsclaim.Table:          rewardsclaim.ValidColumn,
 			spotgenesis.Table:           spotgenesis.ValidColumn,
+			spottransfer.Table:          spottransfer.ValidColumn,
 			vaultdelta.Table:            vaultdelta.ValidColumn,
 			vaultleadercommission.Table: vaultleadercommission.ValidColumn,
 			vaultwithdrawal.Table:       vaultwithdrawal.ValidColumn,

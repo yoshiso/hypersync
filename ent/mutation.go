@@ -12,9 +12,11 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/yoshiso/hypersync/ent/fill"
 	"github.com/yoshiso/hypersync/ent/funding"
+	"github.com/yoshiso/hypersync/ent/internaltransfer"
 	"github.com/yoshiso/hypersync/ent/predicate"
 	"github.com/yoshiso/hypersync/ent/rewardsclaim"
 	"github.com/yoshiso/hypersync/ent/spotgenesis"
+	"github.com/yoshiso/hypersync/ent/spottransfer"
 	"github.com/yoshiso/hypersync/ent/vaultdelta"
 	"github.com/yoshiso/hypersync/ent/vaultleadercommission"
 	"github.com/yoshiso/hypersync/ent/vaultwithdrawal"
@@ -31,8 +33,10 @@ const (
 	// Node types.
 	TypeFill                  = "Fill"
 	TypeFunding               = "Funding"
+	TypeInternalTransfer      = "InternalTransfer"
 	TypeRewardsClaim          = "RewardsClaim"
 	TypeSpotGenesis           = "SpotGenesis"
+	TypeSpotTransfer          = "SpotTransfer"
 	TypeVaultDelta            = "VaultDelta"
 	TypeVaultLeaderCommission = "VaultLeaderCommission"
 	TypeVaultWithdrawal       = "VaultWithdrawal"
@@ -1876,6 +1880,638 @@ func (m *FundingMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Funding edge %s", name)
 }
 
+// InternalTransferMutation represents an operation that mutates the InternalTransfer nodes in the graph.
+type InternalTransferMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	user          *string
+	destination   *string
+	usdc          *string
+	fee           *string
+	time          *int64
+	addtime       *int64
+	address       *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*InternalTransfer, error)
+	predicates    []predicate.InternalTransfer
+}
+
+var _ ent.Mutation = (*InternalTransferMutation)(nil)
+
+// internaltransferOption allows management of the mutation configuration using functional options.
+type internaltransferOption func(*InternalTransferMutation)
+
+// newInternalTransferMutation creates new mutation for the InternalTransfer entity.
+func newInternalTransferMutation(c config, op Op, opts ...internaltransferOption) *InternalTransferMutation {
+	m := &InternalTransferMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeInternalTransfer,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withInternalTransferID sets the ID field of the mutation.
+func withInternalTransferID(id int) internaltransferOption {
+	return func(m *InternalTransferMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *InternalTransfer
+		)
+		m.oldValue = func(ctx context.Context) (*InternalTransfer, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().InternalTransfer.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withInternalTransfer sets the old InternalTransfer of the mutation.
+func withInternalTransfer(node *InternalTransfer) internaltransferOption {
+	return func(m *InternalTransferMutation) {
+		m.oldValue = func(context.Context) (*InternalTransfer, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m InternalTransferMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m InternalTransferMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *InternalTransferMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *InternalTransferMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().InternalTransfer.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetUser sets the "user" field.
+func (m *InternalTransferMutation) SetUser(s string) {
+	m.user = &s
+}
+
+// User returns the value of the "user" field in the mutation.
+func (m *InternalTransferMutation) User() (r string, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUser returns the old "user" field's value of the InternalTransfer entity.
+// If the InternalTransfer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InternalTransferMutation) OldUser(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUser is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUser requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUser: %w", err)
+	}
+	return oldValue.User, nil
+}
+
+// ResetUser resets all changes to the "user" field.
+func (m *InternalTransferMutation) ResetUser() {
+	m.user = nil
+}
+
+// SetDestination sets the "destination" field.
+func (m *InternalTransferMutation) SetDestination(s string) {
+	m.destination = &s
+}
+
+// Destination returns the value of the "destination" field in the mutation.
+func (m *InternalTransferMutation) Destination() (r string, exists bool) {
+	v := m.destination
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDestination returns the old "destination" field's value of the InternalTransfer entity.
+// If the InternalTransfer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InternalTransferMutation) OldDestination(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDestination is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDestination requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDestination: %w", err)
+	}
+	return oldValue.Destination, nil
+}
+
+// ResetDestination resets all changes to the "destination" field.
+func (m *InternalTransferMutation) ResetDestination() {
+	m.destination = nil
+}
+
+// SetUsdc sets the "usdc" field.
+func (m *InternalTransferMutation) SetUsdc(s string) {
+	m.usdc = &s
+}
+
+// Usdc returns the value of the "usdc" field in the mutation.
+func (m *InternalTransferMutation) Usdc() (r string, exists bool) {
+	v := m.usdc
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUsdc returns the old "usdc" field's value of the InternalTransfer entity.
+// If the InternalTransfer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InternalTransferMutation) OldUsdc(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUsdc is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUsdc requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUsdc: %w", err)
+	}
+	return oldValue.Usdc, nil
+}
+
+// ResetUsdc resets all changes to the "usdc" field.
+func (m *InternalTransferMutation) ResetUsdc() {
+	m.usdc = nil
+}
+
+// SetFee sets the "fee" field.
+func (m *InternalTransferMutation) SetFee(s string) {
+	m.fee = &s
+}
+
+// Fee returns the value of the "fee" field in the mutation.
+func (m *InternalTransferMutation) Fee() (r string, exists bool) {
+	v := m.fee
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFee returns the old "fee" field's value of the InternalTransfer entity.
+// If the InternalTransfer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InternalTransferMutation) OldFee(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFee is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFee requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFee: %w", err)
+	}
+	return oldValue.Fee, nil
+}
+
+// ResetFee resets all changes to the "fee" field.
+func (m *InternalTransferMutation) ResetFee() {
+	m.fee = nil
+}
+
+// SetTime sets the "time" field.
+func (m *InternalTransferMutation) SetTime(i int64) {
+	m.time = &i
+	m.addtime = nil
+}
+
+// Time returns the value of the "time" field in the mutation.
+func (m *InternalTransferMutation) Time() (r int64, exists bool) {
+	v := m.time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTime returns the old "time" field's value of the InternalTransfer entity.
+// If the InternalTransfer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InternalTransferMutation) OldTime(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTime: %w", err)
+	}
+	return oldValue.Time, nil
+}
+
+// AddTime adds i to the "time" field.
+func (m *InternalTransferMutation) AddTime(i int64) {
+	if m.addtime != nil {
+		*m.addtime += i
+	} else {
+		m.addtime = &i
+	}
+}
+
+// AddedTime returns the value that was added to the "time" field in this mutation.
+func (m *InternalTransferMutation) AddedTime() (r int64, exists bool) {
+	v := m.addtime
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTime resets all changes to the "time" field.
+func (m *InternalTransferMutation) ResetTime() {
+	m.time = nil
+	m.addtime = nil
+}
+
+// SetAddress sets the "address" field.
+func (m *InternalTransferMutation) SetAddress(s string) {
+	m.address = &s
+}
+
+// Address returns the value of the "address" field in the mutation.
+func (m *InternalTransferMutation) Address() (r string, exists bool) {
+	v := m.address
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAddress returns the old "address" field's value of the InternalTransfer entity.
+// If the InternalTransfer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InternalTransferMutation) OldAddress(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAddress is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAddress requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAddress: %w", err)
+	}
+	return oldValue.Address, nil
+}
+
+// ResetAddress resets all changes to the "address" field.
+func (m *InternalTransferMutation) ResetAddress() {
+	m.address = nil
+}
+
+// Where appends a list predicates to the InternalTransferMutation builder.
+func (m *InternalTransferMutation) Where(ps ...predicate.InternalTransfer) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the InternalTransferMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *InternalTransferMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.InternalTransfer, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *InternalTransferMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *InternalTransferMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (InternalTransfer).
+func (m *InternalTransferMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *InternalTransferMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.user != nil {
+		fields = append(fields, internaltransfer.FieldUser)
+	}
+	if m.destination != nil {
+		fields = append(fields, internaltransfer.FieldDestination)
+	}
+	if m.usdc != nil {
+		fields = append(fields, internaltransfer.FieldUsdc)
+	}
+	if m.fee != nil {
+		fields = append(fields, internaltransfer.FieldFee)
+	}
+	if m.time != nil {
+		fields = append(fields, internaltransfer.FieldTime)
+	}
+	if m.address != nil {
+		fields = append(fields, internaltransfer.FieldAddress)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *InternalTransferMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case internaltransfer.FieldUser:
+		return m.User()
+	case internaltransfer.FieldDestination:
+		return m.Destination()
+	case internaltransfer.FieldUsdc:
+		return m.Usdc()
+	case internaltransfer.FieldFee:
+		return m.Fee()
+	case internaltransfer.FieldTime:
+		return m.Time()
+	case internaltransfer.FieldAddress:
+		return m.Address()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *InternalTransferMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case internaltransfer.FieldUser:
+		return m.OldUser(ctx)
+	case internaltransfer.FieldDestination:
+		return m.OldDestination(ctx)
+	case internaltransfer.FieldUsdc:
+		return m.OldUsdc(ctx)
+	case internaltransfer.FieldFee:
+		return m.OldFee(ctx)
+	case internaltransfer.FieldTime:
+		return m.OldTime(ctx)
+	case internaltransfer.FieldAddress:
+		return m.OldAddress(ctx)
+	}
+	return nil, fmt.Errorf("unknown InternalTransfer field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *InternalTransferMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case internaltransfer.FieldUser:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUser(v)
+		return nil
+	case internaltransfer.FieldDestination:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDestination(v)
+		return nil
+	case internaltransfer.FieldUsdc:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUsdc(v)
+		return nil
+	case internaltransfer.FieldFee:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFee(v)
+		return nil
+	case internaltransfer.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTime(v)
+		return nil
+	case internaltransfer.FieldAddress:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAddress(v)
+		return nil
+	}
+	return fmt.Errorf("unknown InternalTransfer field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *InternalTransferMutation) AddedFields() []string {
+	var fields []string
+	if m.addtime != nil {
+		fields = append(fields, internaltransfer.FieldTime)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *InternalTransferMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case internaltransfer.FieldTime:
+		return m.AddedTime()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *InternalTransferMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case internaltransfer.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTime(v)
+		return nil
+	}
+	return fmt.Errorf("unknown InternalTransfer numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *InternalTransferMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *InternalTransferMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *InternalTransferMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown InternalTransfer nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *InternalTransferMutation) ResetField(name string) error {
+	switch name {
+	case internaltransfer.FieldUser:
+		m.ResetUser()
+		return nil
+	case internaltransfer.FieldDestination:
+		m.ResetDestination()
+		return nil
+	case internaltransfer.FieldUsdc:
+		m.ResetUsdc()
+		return nil
+	case internaltransfer.FieldFee:
+		m.ResetFee()
+		return nil
+	case internaltransfer.FieldTime:
+		m.ResetTime()
+		return nil
+	case internaltransfer.FieldAddress:
+		m.ResetAddress()
+		return nil
+	}
+	return fmt.Errorf("unknown InternalTransfer field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *InternalTransferMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *InternalTransferMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *InternalTransferMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *InternalTransferMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *InternalTransferMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *InternalTransferMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *InternalTransferMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown InternalTransfer unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *InternalTransferMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown InternalTransfer edge %s", name)
+}
+
 // RewardsClaimMutation represents an operation that mutates the RewardsClaim nodes in the graph.
 type RewardsClaimMutation struct {
 	config
@@ -2868,6 +3504,692 @@ func (m *SpotGenesisMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *SpotGenesisMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown SpotGenesis edge %s", name)
+}
+
+// SpotTransferMutation represents an operation that mutates the SpotTransfer nodes in the graph.
+type SpotTransferMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	user          *string
+	destination   *string
+	token         *string
+	amount        *string
+	fee           *string
+	time          *int64
+	addtime       *int64
+	address       *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*SpotTransfer, error)
+	predicates    []predicate.SpotTransfer
+}
+
+var _ ent.Mutation = (*SpotTransferMutation)(nil)
+
+// spottransferOption allows management of the mutation configuration using functional options.
+type spottransferOption func(*SpotTransferMutation)
+
+// newSpotTransferMutation creates new mutation for the SpotTransfer entity.
+func newSpotTransferMutation(c config, op Op, opts ...spottransferOption) *SpotTransferMutation {
+	m := &SpotTransferMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeSpotTransfer,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withSpotTransferID sets the ID field of the mutation.
+func withSpotTransferID(id int) spottransferOption {
+	return func(m *SpotTransferMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *SpotTransfer
+		)
+		m.oldValue = func(ctx context.Context) (*SpotTransfer, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().SpotTransfer.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withSpotTransfer sets the old SpotTransfer of the mutation.
+func withSpotTransfer(node *SpotTransfer) spottransferOption {
+	return func(m *SpotTransferMutation) {
+		m.oldValue = func(context.Context) (*SpotTransfer, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m SpotTransferMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m SpotTransferMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *SpotTransferMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *SpotTransferMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().SpotTransfer.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetUser sets the "user" field.
+func (m *SpotTransferMutation) SetUser(s string) {
+	m.user = &s
+}
+
+// User returns the value of the "user" field in the mutation.
+func (m *SpotTransferMutation) User() (r string, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUser returns the old "user" field's value of the SpotTransfer entity.
+// If the SpotTransfer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpotTransferMutation) OldUser(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUser is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUser requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUser: %w", err)
+	}
+	return oldValue.User, nil
+}
+
+// ResetUser resets all changes to the "user" field.
+func (m *SpotTransferMutation) ResetUser() {
+	m.user = nil
+}
+
+// SetDestination sets the "destination" field.
+func (m *SpotTransferMutation) SetDestination(s string) {
+	m.destination = &s
+}
+
+// Destination returns the value of the "destination" field in the mutation.
+func (m *SpotTransferMutation) Destination() (r string, exists bool) {
+	v := m.destination
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDestination returns the old "destination" field's value of the SpotTransfer entity.
+// If the SpotTransfer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpotTransferMutation) OldDestination(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDestination is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDestination requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDestination: %w", err)
+	}
+	return oldValue.Destination, nil
+}
+
+// ResetDestination resets all changes to the "destination" field.
+func (m *SpotTransferMutation) ResetDestination() {
+	m.destination = nil
+}
+
+// SetToken sets the "token" field.
+func (m *SpotTransferMutation) SetToken(s string) {
+	m.token = &s
+}
+
+// Token returns the value of the "token" field in the mutation.
+func (m *SpotTransferMutation) Token() (r string, exists bool) {
+	v := m.token
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldToken returns the old "token" field's value of the SpotTransfer entity.
+// If the SpotTransfer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpotTransferMutation) OldToken(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldToken is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldToken requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldToken: %w", err)
+	}
+	return oldValue.Token, nil
+}
+
+// ResetToken resets all changes to the "token" field.
+func (m *SpotTransferMutation) ResetToken() {
+	m.token = nil
+}
+
+// SetAmount sets the "amount" field.
+func (m *SpotTransferMutation) SetAmount(s string) {
+	m.amount = &s
+}
+
+// Amount returns the value of the "amount" field in the mutation.
+func (m *SpotTransferMutation) Amount() (r string, exists bool) {
+	v := m.amount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAmount returns the old "amount" field's value of the SpotTransfer entity.
+// If the SpotTransfer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpotTransferMutation) OldAmount(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAmount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAmount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAmount: %w", err)
+	}
+	return oldValue.Amount, nil
+}
+
+// ResetAmount resets all changes to the "amount" field.
+func (m *SpotTransferMutation) ResetAmount() {
+	m.amount = nil
+}
+
+// SetFee sets the "fee" field.
+func (m *SpotTransferMutation) SetFee(s string) {
+	m.fee = &s
+}
+
+// Fee returns the value of the "fee" field in the mutation.
+func (m *SpotTransferMutation) Fee() (r string, exists bool) {
+	v := m.fee
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFee returns the old "fee" field's value of the SpotTransfer entity.
+// If the SpotTransfer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpotTransferMutation) OldFee(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFee is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFee requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFee: %w", err)
+	}
+	return oldValue.Fee, nil
+}
+
+// ResetFee resets all changes to the "fee" field.
+func (m *SpotTransferMutation) ResetFee() {
+	m.fee = nil
+}
+
+// SetTime sets the "time" field.
+func (m *SpotTransferMutation) SetTime(i int64) {
+	m.time = &i
+	m.addtime = nil
+}
+
+// Time returns the value of the "time" field in the mutation.
+func (m *SpotTransferMutation) Time() (r int64, exists bool) {
+	v := m.time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTime returns the old "time" field's value of the SpotTransfer entity.
+// If the SpotTransfer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpotTransferMutation) OldTime(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTime: %w", err)
+	}
+	return oldValue.Time, nil
+}
+
+// AddTime adds i to the "time" field.
+func (m *SpotTransferMutation) AddTime(i int64) {
+	if m.addtime != nil {
+		*m.addtime += i
+	} else {
+		m.addtime = &i
+	}
+}
+
+// AddedTime returns the value that was added to the "time" field in this mutation.
+func (m *SpotTransferMutation) AddedTime() (r int64, exists bool) {
+	v := m.addtime
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTime resets all changes to the "time" field.
+func (m *SpotTransferMutation) ResetTime() {
+	m.time = nil
+	m.addtime = nil
+}
+
+// SetAddress sets the "address" field.
+func (m *SpotTransferMutation) SetAddress(s string) {
+	m.address = &s
+}
+
+// Address returns the value of the "address" field in the mutation.
+func (m *SpotTransferMutation) Address() (r string, exists bool) {
+	v := m.address
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAddress returns the old "address" field's value of the SpotTransfer entity.
+// If the SpotTransfer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpotTransferMutation) OldAddress(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAddress is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAddress requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAddress: %w", err)
+	}
+	return oldValue.Address, nil
+}
+
+// ResetAddress resets all changes to the "address" field.
+func (m *SpotTransferMutation) ResetAddress() {
+	m.address = nil
+}
+
+// Where appends a list predicates to the SpotTransferMutation builder.
+func (m *SpotTransferMutation) Where(ps ...predicate.SpotTransfer) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the SpotTransferMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *SpotTransferMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.SpotTransfer, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *SpotTransferMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *SpotTransferMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (SpotTransfer).
+func (m *SpotTransferMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *SpotTransferMutation) Fields() []string {
+	fields := make([]string, 0, 7)
+	if m.user != nil {
+		fields = append(fields, spottransfer.FieldUser)
+	}
+	if m.destination != nil {
+		fields = append(fields, spottransfer.FieldDestination)
+	}
+	if m.token != nil {
+		fields = append(fields, spottransfer.FieldToken)
+	}
+	if m.amount != nil {
+		fields = append(fields, spottransfer.FieldAmount)
+	}
+	if m.fee != nil {
+		fields = append(fields, spottransfer.FieldFee)
+	}
+	if m.time != nil {
+		fields = append(fields, spottransfer.FieldTime)
+	}
+	if m.address != nil {
+		fields = append(fields, spottransfer.FieldAddress)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *SpotTransferMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case spottransfer.FieldUser:
+		return m.User()
+	case spottransfer.FieldDestination:
+		return m.Destination()
+	case spottransfer.FieldToken:
+		return m.Token()
+	case spottransfer.FieldAmount:
+		return m.Amount()
+	case spottransfer.FieldFee:
+		return m.Fee()
+	case spottransfer.FieldTime:
+		return m.Time()
+	case spottransfer.FieldAddress:
+		return m.Address()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *SpotTransferMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case spottransfer.FieldUser:
+		return m.OldUser(ctx)
+	case spottransfer.FieldDestination:
+		return m.OldDestination(ctx)
+	case spottransfer.FieldToken:
+		return m.OldToken(ctx)
+	case spottransfer.FieldAmount:
+		return m.OldAmount(ctx)
+	case spottransfer.FieldFee:
+		return m.OldFee(ctx)
+	case spottransfer.FieldTime:
+		return m.OldTime(ctx)
+	case spottransfer.FieldAddress:
+		return m.OldAddress(ctx)
+	}
+	return nil, fmt.Errorf("unknown SpotTransfer field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SpotTransferMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case spottransfer.FieldUser:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUser(v)
+		return nil
+	case spottransfer.FieldDestination:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDestination(v)
+		return nil
+	case spottransfer.FieldToken:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetToken(v)
+		return nil
+	case spottransfer.FieldAmount:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAmount(v)
+		return nil
+	case spottransfer.FieldFee:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFee(v)
+		return nil
+	case spottransfer.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTime(v)
+		return nil
+	case spottransfer.FieldAddress:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAddress(v)
+		return nil
+	}
+	return fmt.Errorf("unknown SpotTransfer field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *SpotTransferMutation) AddedFields() []string {
+	var fields []string
+	if m.addtime != nil {
+		fields = append(fields, spottransfer.FieldTime)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *SpotTransferMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case spottransfer.FieldTime:
+		return m.AddedTime()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SpotTransferMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case spottransfer.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTime(v)
+		return nil
+	}
+	return fmt.Errorf("unknown SpotTransfer numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *SpotTransferMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *SpotTransferMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *SpotTransferMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown SpotTransfer nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *SpotTransferMutation) ResetField(name string) error {
+	switch name {
+	case spottransfer.FieldUser:
+		m.ResetUser()
+		return nil
+	case spottransfer.FieldDestination:
+		m.ResetDestination()
+		return nil
+	case spottransfer.FieldToken:
+		m.ResetToken()
+		return nil
+	case spottransfer.FieldAmount:
+		m.ResetAmount()
+		return nil
+	case spottransfer.FieldFee:
+		m.ResetFee()
+		return nil
+	case spottransfer.FieldTime:
+		m.ResetTime()
+		return nil
+	case spottransfer.FieldAddress:
+		m.ResetAddress()
+		return nil
+	}
+	return fmt.Errorf("unknown SpotTransfer field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *SpotTransferMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *SpotTransferMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *SpotTransferMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *SpotTransferMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *SpotTransferMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *SpotTransferMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *SpotTransferMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown SpotTransfer unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *SpotTransferMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown SpotTransfer edge %s", name)
 }
 
 // VaultDeltaMutation represents an operation that mutates the VaultDelta nodes in the graph.

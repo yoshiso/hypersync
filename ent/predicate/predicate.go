@@ -12,11 +12,17 @@ type Fill func(*sql.Selector)
 // Funding is the predicate function for funding builders.
 type Funding func(*sql.Selector)
 
+// InternalTransfer is the predicate function for internaltransfer builders.
+type InternalTransfer func(*sql.Selector)
+
 // RewardsClaim is the predicate function for rewardsclaim builders.
 type RewardsClaim func(*sql.Selector)
 
 // SpotGenesis is the predicate function for spotgenesis builders.
 type SpotGenesis func(*sql.Selector)
+
+// SpotTransfer is the predicate function for spottransfer builders.
+type SpotTransfer func(*sql.Selector)
 
 // VaultDelta is the predicate function for vaultdelta builders.
 type VaultDelta func(*sql.Selector)

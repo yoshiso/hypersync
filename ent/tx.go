@@ -16,10 +16,14 @@ type Tx struct {
 	Fill *FillClient
 	// Funding is the client for interacting with the Funding builders.
 	Funding *FundingClient
+	// InternalTransfer is the client for interacting with the InternalTransfer builders.
+	InternalTransfer *InternalTransferClient
 	// RewardsClaim is the client for interacting with the RewardsClaim builders.
 	RewardsClaim *RewardsClaimClient
 	// SpotGenesis is the client for interacting with the SpotGenesis builders.
 	SpotGenesis *SpotGenesisClient
+	// SpotTransfer is the client for interacting with the SpotTransfer builders.
+	SpotTransfer *SpotTransferClient
 	// VaultDelta is the client for interacting with the VaultDelta builders.
 	VaultDelta *VaultDeltaClient
 	// VaultLeaderCommission is the client for interacting with the VaultLeaderCommission builders.
@@ -159,8 +163,10 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Fill = NewFillClient(tx.config)
 	tx.Funding = NewFundingClient(tx.config)
+	tx.InternalTransfer = NewInternalTransferClient(tx.config)
 	tx.RewardsClaim = NewRewardsClaimClient(tx.config)
 	tx.SpotGenesis = NewSpotGenesisClient(tx.config)
+	tx.SpotTransfer = NewSpotTransferClient(tx.config)
 	tx.VaultDelta = NewVaultDeltaClient(tx.config)
 	tx.VaultLeaderCommission = NewVaultLeaderCommissionClient(tx.config)
 	tx.VaultWithdrawal = NewVaultWithdrawalClient(tx.config)

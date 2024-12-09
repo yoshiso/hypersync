@@ -16,8 +16,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/yoshiso/hypersync/ent/fill"
 	"github.com/yoshiso/hypersync/ent/funding"
+	"github.com/yoshiso/hypersync/ent/internaltransfer"
 	"github.com/yoshiso/hypersync/ent/rewardsclaim"
 	"github.com/yoshiso/hypersync/ent/spotgenesis"
+	"github.com/yoshiso/hypersync/ent/spottransfer"
 	"github.com/yoshiso/hypersync/ent/vaultdelta"
 	"github.com/yoshiso/hypersync/ent/vaultleadercommission"
 	"github.com/yoshiso/hypersync/ent/vaultwithdrawal"
@@ -32,10 +34,14 @@ type Client struct {
 	Fill *FillClient
 	// Funding is the client for interacting with the Funding builders.
 	Funding *FundingClient
+	// InternalTransfer is the client for interacting with the InternalTransfer builders.
+	InternalTransfer *InternalTransferClient
 	// RewardsClaim is the client for interacting with the RewardsClaim builders.
 	RewardsClaim *RewardsClaimClient
 	// SpotGenesis is the client for interacting with the SpotGenesis builders.
 	SpotGenesis *SpotGenesisClient
+	// SpotTransfer is the client for interacting with the SpotTransfer builders.
+	SpotTransfer *SpotTransferClient
 	// VaultDelta is the client for interacting with the VaultDelta builders.
 	VaultDelta *VaultDeltaClient
 	// VaultLeaderCommission is the client for interacting with the VaultLeaderCommission builders.
@@ -55,8 +61,10 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Fill = NewFillClient(c.config)
 	c.Funding = NewFundingClient(c.config)
+	c.InternalTransfer = NewInternalTransferClient(c.config)
 	c.RewardsClaim = NewRewardsClaimClient(c.config)
 	c.SpotGenesis = NewSpotGenesisClient(c.config)
+	c.SpotTransfer = NewSpotTransferClient(c.config)
 	c.VaultDelta = NewVaultDeltaClient(c.config)
 	c.VaultLeaderCommission = NewVaultLeaderCommissionClient(c.config)
 	c.VaultWithdrawal = NewVaultWithdrawalClient(c.config)
@@ -154,8 +162,10 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:                cfg,
 		Fill:                  NewFillClient(cfg),
 		Funding:               NewFundingClient(cfg),
+		InternalTransfer:      NewInternalTransferClient(cfg),
 		RewardsClaim:          NewRewardsClaimClient(cfg),
 		SpotGenesis:           NewSpotGenesisClient(cfg),
+		SpotTransfer:          NewSpotTransferClient(cfg),
 		VaultDelta:            NewVaultDeltaClient(cfg),
 		VaultLeaderCommission: NewVaultLeaderCommissionClient(cfg),
 		VaultWithdrawal:       NewVaultWithdrawalClient(cfg),
@@ -180,8 +190,10 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:                cfg,
 		Fill:                  NewFillClient(cfg),
 		Funding:               NewFundingClient(cfg),
+		InternalTransfer:      NewInternalTransferClient(cfg),
 		RewardsClaim:          NewRewardsClaimClient(cfg),
 		SpotGenesis:           NewSpotGenesisClient(cfg),
+		SpotTransfer:          NewSpotTransferClient(cfg),
 		VaultDelta:            NewVaultDeltaClient(cfg),
 		VaultLeaderCommission: NewVaultLeaderCommissionClient(cfg),
 		VaultWithdrawal:       NewVaultWithdrawalClient(cfg),
@@ -214,8 +226,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Fill, c.Funding, c.RewardsClaim, c.SpotGenesis, c.VaultDelta,
-		c.VaultLeaderCommission, c.VaultWithdrawal,
+		c.Fill, c.Funding, c.InternalTransfer, c.RewardsClaim, c.SpotGenesis,
+		c.SpotTransfer, c.VaultDelta, c.VaultLeaderCommission, c.VaultWithdrawal,
 	} {
 		n.Use(hooks...)
 	}
@@ -225,8 +237,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Fill, c.Funding, c.RewardsClaim, c.SpotGenesis, c.VaultDelta,
-		c.VaultLeaderCommission, c.VaultWithdrawal,
+		c.Fill, c.Funding, c.InternalTransfer, c.RewardsClaim, c.SpotGenesis,
+		c.SpotTransfer, c.VaultDelta, c.VaultLeaderCommission, c.VaultWithdrawal,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -239,10 +251,14 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Fill.mutate(ctx, m)
 	case *FundingMutation:
 		return c.Funding.mutate(ctx, m)
+	case *InternalTransferMutation:
+		return c.InternalTransfer.mutate(ctx, m)
 	case *RewardsClaimMutation:
 		return c.RewardsClaim.mutate(ctx, m)
 	case *SpotGenesisMutation:
 		return c.SpotGenesis.mutate(ctx, m)
+	case *SpotTransferMutation:
+		return c.SpotTransfer.mutate(ctx, m)
 	case *VaultDeltaMutation:
 		return c.VaultDelta.mutate(ctx, m)
 	case *VaultLeaderCommissionMutation:
@@ -520,6 +536,139 @@ func (c *FundingClient) mutate(ctx context.Context, m *FundingMutation) (Value, 
 	}
 }
 
+// InternalTransferClient is a client for the InternalTransfer schema.
+type InternalTransferClient struct {
+	config
+}
+
+// NewInternalTransferClient returns a client for the InternalTransfer from the given config.
+func NewInternalTransferClient(c config) *InternalTransferClient {
+	return &InternalTransferClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `internaltransfer.Hooks(f(g(h())))`.
+func (c *InternalTransferClient) Use(hooks ...Hook) {
+	c.hooks.InternalTransfer = append(c.hooks.InternalTransfer, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `internaltransfer.Intercept(f(g(h())))`.
+func (c *InternalTransferClient) Intercept(interceptors ...Interceptor) {
+	c.inters.InternalTransfer = append(c.inters.InternalTransfer, interceptors...)
+}
+
+// Create returns a builder for creating a InternalTransfer entity.
+func (c *InternalTransferClient) Create() *InternalTransferCreate {
+	mutation := newInternalTransferMutation(c.config, OpCreate)
+	return &InternalTransferCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of InternalTransfer entities.
+func (c *InternalTransferClient) CreateBulk(builders ...*InternalTransferCreate) *InternalTransferCreateBulk {
+	return &InternalTransferCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *InternalTransferClient) MapCreateBulk(slice any, setFunc func(*InternalTransferCreate, int)) *InternalTransferCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &InternalTransferCreateBulk{err: fmt.Errorf("calling to InternalTransferClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*InternalTransferCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &InternalTransferCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for InternalTransfer.
+func (c *InternalTransferClient) Update() *InternalTransferUpdate {
+	mutation := newInternalTransferMutation(c.config, OpUpdate)
+	return &InternalTransferUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *InternalTransferClient) UpdateOne(it *InternalTransfer) *InternalTransferUpdateOne {
+	mutation := newInternalTransferMutation(c.config, OpUpdateOne, withInternalTransfer(it))
+	return &InternalTransferUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *InternalTransferClient) UpdateOneID(id int) *InternalTransferUpdateOne {
+	mutation := newInternalTransferMutation(c.config, OpUpdateOne, withInternalTransferID(id))
+	return &InternalTransferUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for InternalTransfer.
+func (c *InternalTransferClient) Delete() *InternalTransferDelete {
+	mutation := newInternalTransferMutation(c.config, OpDelete)
+	return &InternalTransferDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *InternalTransferClient) DeleteOne(it *InternalTransfer) *InternalTransferDeleteOne {
+	return c.DeleteOneID(it.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *InternalTransferClient) DeleteOneID(id int) *InternalTransferDeleteOne {
+	builder := c.Delete().Where(internaltransfer.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &InternalTransferDeleteOne{builder}
+}
+
+// Query returns a query builder for InternalTransfer.
+func (c *InternalTransferClient) Query() *InternalTransferQuery {
+	return &InternalTransferQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeInternalTransfer},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a InternalTransfer entity by its id.
+func (c *InternalTransferClient) Get(ctx context.Context, id int) (*InternalTransfer, error) {
+	return c.Query().Where(internaltransfer.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *InternalTransferClient) GetX(ctx context.Context, id int) *InternalTransfer {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *InternalTransferClient) Hooks() []Hook {
+	return c.hooks.InternalTransfer
+}
+
+// Interceptors returns the client interceptors.
+func (c *InternalTransferClient) Interceptors() []Interceptor {
+	return c.inters.InternalTransfer
+}
+
+func (c *InternalTransferClient) mutate(ctx context.Context, m *InternalTransferMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&InternalTransferCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&InternalTransferUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&InternalTransferUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&InternalTransferDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown InternalTransfer mutation op: %q", m.Op())
+	}
+}
+
 // RewardsClaimClient is a client for the RewardsClaim schema.
 type RewardsClaimClient struct {
 	config
@@ -783,6 +932,139 @@ func (c *SpotGenesisClient) mutate(ctx context.Context, m *SpotGenesisMutation) 
 		return (&SpotGenesisDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown SpotGenesis mutation op: %q", m.Op())
+	}
+}
+
+// SpotTransferClient is a client for the SpotTransfer schema.
+type SpotTransferClient struct {
+	config
+}
+
+// NewSpotTransferClient returns a client for the SpotTransfer from the given config.
+func NewSpotTransferClient(c config) *SpotTransferClient {
+	return &SpotTransferClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `spottransfer.Hooks(f(g(h())))`.
+func (c *SpotTransferClient) Use(hooks ...Hook) {
+	c.hooks.SpotTransfer = append(c.hooks.SpotTransfer, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `spottransfer.Intercept(f(g(h())))`.
+func (c *SpotTransferClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SpotTransfer = append(c.inters.SpotTransfer, interceptors...)
+}
+
+// Create returns a builder for creating a SpotTransfer entity.
+func (c *SpotTransferClient) Create() *SpotTransferCreate {
+	mutation := newSpotTransferMutation(c.config, OpCreate)
+	return &SpotTransferCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SpotTransfer entities.
+func (c *SpotTransferClient) CreateBulk(builders ...*SpotTransferCreate) *SpotTransferCreateBulk {
+	return &SpotTransferCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SpotTransferClient) MapCreateBulk(slice any, setFunc func(*SpotTransferCreate, int)) *SpotTransferCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SpotTransferCreateBulk{err: fmt.Errorf("calling to SpotTransferClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SpotTransferCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SpotTransferCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SpotTransfer.
+func (c *SpotTransferClient) Update() *SpotTransferUpdate {
+	mutation := newSpotTransferMutation(c.config, OpUpdate)
+	return &SpotTransferUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SpotTransferClient) UpdateOne(st *SpotTransfer) *SpotTransferUpdateOne {
+	mutation := newSpotTransferMutation(c.config, OpUpdateOne, withSpotTransfer(st))
+	return &SpotTransferUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SpotTransferClient) UpdateOneID(id int) *SpotTransferUpdateOne {
+	mutation := newSpotTransferMutation(c.config, OpUpdateOne, withSpotTransferID(id))
+	return &SpotTransferUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SpotTransfer.
+func (c *SpotTransferClient) Delete() *SpotTransferDelete {
+	mutation := newSpotTransferMutation(c.config, OpDelete)
+	return &SpotTransferDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SpotTransferClient) DeleteOne(st *SpotTransfer) *SpotTransferDeleteOne {
+	return c.DeleteOneID(st.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SpotTransferClient) DeleteOneID(id int) *SpotTransferDeleteOne {
+	builder := c.Delete().Where(spottransfer.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SpotTransferDeleteOne{builder}
+}
+
+// Query returns a query builder for SpotTransfer.
+func (c *SpotTransferClient) Query() *SpotTransferQuery {
+	return &SpotTransferQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSpotTransfer},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SpotTransfer entity by its id.
+func (c *SpotTransferClient) Get(ctx context.Context, id int) (*SpotTransfer, error) {
+	return c.Query().Where(spottransfer.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SpotTransferClient) GetX(ctx context.Context, id int) *SpotTransfer {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *SpotTransferClient) Hooks() []Hook {
+	return c.hooks.SpotTransfer
+}
+
+// Interceptors returns the client interceptors.
+func (c *SpotTransferClient) Interceptors() []Interceptor {
+	return c.inters.SpotTransfer
+}
+
+func (c *SpotTransferClient) mutate(ctx context.Context, m *SpotTransferMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SpotTransferCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SpotTransferUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SpotTransferUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SpotTransferDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SpotTransfer mutation op: %q", m.Op())
 	}
 }
 
@@ -1188,11 +1470,11 @@ func (c *VaultWithdrawalClient) mutate(ctx context.Context, m *VaultWithdrawalMu
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Fill, Funding, RewardsClaim, SpotGenesis, VaultDelta, VaultLeaderCommission,
-		VaultWithdrawal []ent.Hook
+		Fill, Funding, InternalTransfer, RewardsClaim, SpotGenesis, SpotTransfer,
+		VaultDelta, VaultLeaderCommission, VaultWithdrawal []ent.Hook
 	}
 	inters struct {
-		Fill, Funding, RewardsClaim, SpotGenesis, VaultDelta, VaultLeaderCommission,
-		VaultWithdrawal []ent.Interceptor
+		Fill, Funding, InternalTransfer, RewardsClaim, SpotGenesis, SpotTransfer,
+		VaultDelta, VaultLeaderCommission, VaultWithdrawal []ent.Interceptor
 	}
 )

@@ -113,6 +113,8 @@ type WSUserNonFundingLedgerUpdateDelta struct {
 	ClosingCost     string `json:"closingCost"`
 	Basis           string `json:"basis"`
 	NetWithdrawnUsd string `json:"netWithdrawnUsd"`
+	Destination     string `json:"destination"`
+	Fee             string `json:"fee"`
 }
 
 type WSUserNonFundingLedgerUpdates struct {
@@ -487,6 +489,37 @@ func run(userAddress string, verbose bool, output_file string) {
 						update.Delta.Type, update.Delta.Usdc, update.Delta.Vault, update.Time,
 					))
 				}
+			case "internalTransfer":
+				wip := client.InternalTransfer.Create().
+					SetUsdc(update.Delta.Usdc).
+					SetUser(update.Delta.User).
+					SetDestination(update.Delta.Destination).
+					SetFee(update.Delta.Fee).
+					SetTime(update.Time).
+					SetAddress(userAddress)
+				wip.OnConflict().UpdateNewValues().IDX(ctx)
+				if verbose {
+					fmt.Println(fmt.Sprintf(
+						"[InternalTransfer] User: %s, Dest: %s, USDC: %s, Fee: %s, Time: %v",
+						update.Delta.User, update.Delta.Destination, update.Delta.Usdc, update.Delta.Fee, update.Time,
+					))
+				}
+			case "spotTransfer":
+				wip := client.SpotTransfer.Create().
+					SetToken(update.Delta.Token).
+					SetAmount(update.Delta.Amount).
+					SetUser(update.Delta.User).
+					SetDestination(update.Delta.Destination).
+					SetFee(update.Delta.Fee).
+					SetTime(update.Time).
+					SetAddress(userAddress)
+				wip.OnConflict().UpdateNewValues().IDX(ctx)
+				if verbose {
+					fmt.Println(fmt.Sprintf(
+						"[SpotTransfer] User: %s, Dest: %s, Token:%s, Amount: %s, Fee: %s, Time: %v",
+						update.Delta.User, update.Delta.Destination, update.Delta.Token, update.Delta.Amount, update.Delta.Fee, update.Time,
+					))
+				}
 			}
 		}
 
@@ -649,6 +682,37 @@ func run(userAddress string, verbose bool, output_file string) {
 								fmt.Println(fmt.Sprintf(
 									"[VaultDelta] Type: %s, USDC: %s, Vault: %s, Time: %v",
 									update.Delta.Type, update.Delta.Usdc, update.Delta.Vault, update.Time,
+								))
+							}
+						case "internalTransfer":
+							wip := client.InternalTransfer.Create().
+								SetUsdc(update.Delta.Usdc).
+								SetUser(update.Delta.User).
+								SetDestination(update.Delta.Destination).
+								SetFee(update.Delta.Fee).
+								SetTime(update.Time).
+								SetAddress(userAddress)
+							wip.OnConflict().UpdateNewValues().IDX(ctx)
+							if verbose {
+								fmt.Println(fmt.Sprintf(
+									"[InternalTransfer] User: %s, Dest: %s, USDC: %s, Fee: %s, Time: %v",
+									update.Delta.User, update.Delta.Destination, update.Delta.Usdc, update.Delta.Fee, update.Time,
+								))
+							}
+						case "spotTransfer":
+							wip := client.SpotTransfer.Create().
+								SetToken(update.Delta.Token).
+								SetAmount(update.Delta.Amount).
+								SetUser(update.Delta.User).
+								SetDestination(update.Delta.Destination).
+								SetFee(update.Delta.Fee).
+								SetTime(update.Time).
+								SetAddress(userAddress)
+							wip.OnConflict().UpdateNewValues().IDX(ctx)
+							if verbose {
+								fmt.Println(fmt.Sprintf(
+									"[SpotTransfer] User: %s, Dest: %s, Token:%s, Amount: %s, Fee: %s, Time: %v",
+									update.Delta.User, update.Delta.Destination, update.Delta.Token, update.Delta.Amount, update.Delta.Fee, update.Time,
 								))
 							}
 						}

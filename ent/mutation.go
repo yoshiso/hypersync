@@ -20,6 +20,7 @@ import (
 	"github.com/yoshiso/hypersync/ent/vaultdelta"
 	"github.com/yoshiso/hypersync/ent/vaultleadercommission"
 	"github.com/yoshiso/hypersync/ent/vaultwithdrawal"
+	"github.com/yoshiso/hypersync/ent/withdraw"
 )
 
 const (
@@ -40,6 +41,7 @@ const (
 	TypeVaultDelta            = "VaultDelta"
 	TypeVaultLeaderCommission = "VaultLeaderCommission"
 	TypeVaultWithdrawal       = "VaultWithdrawal"
+	TypeWithdraw              = "Withdraw"
 )
 
 // FillMutation represents an operation that mutates the Fill nodes in the graph.
@@ -6086,4 +6088,615 @@ func (m *VaultWithdrawalMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *VaultWithdrawalMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown VaultWithdrawal edge %s", name)
+}
+
+// WithdrawMutation represents an operation that mutates the Withdraw nodes in the graph.
+type WithdrawMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	usdc          *string
+	nonce         *int64
+	addnonce      *int64
+	fee           *string
+	time          *int64
+	addtime       *int64
+	address       *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*Withdraw, error)
+	predicates    []predicate.Withdraw
+}
+
+var _ ent.Mutation = (*WithdrawMutation)(nil)
+
+// withdrawOption allows management of the mutation configuration using functional options.
+type withdrawOption func(*WithdrawMutation)
+
+// newWithdrawMutation creates new mutation for the Withdraw entity.
+func newWithdrawMutation(c config, op Op, opts ...withdrawOption) *WithdrawMutation {
+	m := &WithdrawMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeWithdraw,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withWithdrawID sets the ID field of the mutation.
+func withWithdrawID(id int) withdrawOption {
+	return func(m *WithdrawMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Withdraw
+		)
+		m.oldValue = func(ctx context.Context) (*Withdraw, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Withdraw.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withWithdraw sets the old Withdraw of the mutation.
+func withWithdraw(node *Withdraw) withdrawOption {
+	return func(m *WithdrawMutation) {
+		m.oldValue = func(context.Context) (*Withdraw, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m WithdrawMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m WithdrawMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *WithdrawMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *WithdrawMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Withdraw.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetUsdc sets the "usdc" field.
+func (m *WithdrawMutation) SetUsdc(s string) {
+	m.usdc = &s
+}
+
+// Usdc returns the value of the "usdc" field in the mutation.
+func (m *WithdrawMutation) Usdc() (r string, exists bool) {
+	v := m.usdc
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUsdc returns the old "usdc" field's value of the Withdraw entity.
+// If the Withdraw object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WithdrawMutation) OldUsdc(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUsdc is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUsdc requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUsdc: %w", err)
+	}
+	return oldValue.Usdc, nil
+}
+
+// ResetUsdc resets all changes to the "usdc" field.
+func (m *WithdrawMutation) ResetUsdc() {
+	m.usdc = nil
+}
+
+// SetNonce sets the "nonce" field.
+func (m *WithdrawMutation) SetNonce(i int64) {
+	m.nonce = &i
+	m.addnonce = nil
+}
+
+// Nonce returns the value of the "nonce" field in the mutation.
+func (m *WithdrawMutation) Nonce() (r int64, exists bool) {
+	v := m.nonce
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNonce returns the old "nonce" field's value of the Withdraw entity.
+// If the Withdraw object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WithdrawMutation) OldNonce(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNonce is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNonce requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNonce: %w", err)
+	}
+	return oldValue.Nonce, nil
+}
+
+// AddNonce adds i to the "nonce" field.
+func (m *WithdrawMutation) AddNonce(i int64) {
+	if m.addnonce != nil {
+		*m.addnonce += i
+	} else {
+		m.addnonce = &i
+	}
+}
+
+// AddedNonce returns the value that was added to the "nonce" field in this mutation.
+func (m *WithdrawMutation) AddedNonce() (r int64, exists bool) {
+	v := m.addnonce
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetNonce resets all changes to the "nonce" field.
+func (m *WithdrawMutation) ResetNonce() {
+	m.nonce = nil
+	m.addnonce = nil
+}
+
+// SetFee sets the "fee" field.
+func (m *WithdrawMutation) SetFee(s string) {
+	m.fee = &s
+}
+
+// Fee returns the value of the "fee" field in the mutation.
+func (m *WithdrawMutation) Fee() (r string, exists bool) {
+	v := m.fee
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFee returns the old "fee" field's value of the Withdraw entity.
+// If the Withdraw object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WithdrawMutation) OldFee(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFee is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFee requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFee: %w", err)
+	}
+	return oldValue.Fee, nil
+}
+
+// ResetFee resets all changes to the "fee" field.
+func (m *WithdrawMutation) ResetFee() {
+	m.fee = nil
+}
+
+// SetTime sets the "time" field.
+func (m *WithdrawMutation) SetTime(i int64) {
+	m.time = &i
+	m.addtime = nil
+}
+
+// Time returns the value of the "time" field in the mutation.
+func (m *WithdrawMutation) Time() (r int64, exists bool) {
+	v := m.time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTime returns the old "time" field's value of the Withdraw entity.
+// If the Withdraw object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WithdrawMutation) OldTime(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTime: %w", err)
+	}
+	return oldValue.Time, nil
+}
+
+// AddTime adds i to the "time" field.
+func (m *WithdrawMutation) AddTime(i int64) {
+	if m.addtime != nil {
+		*m.addtime += i
+	} else {
+		m.addtime = &i
+	}
+}
+
+// AddedTime returns the value that was added to the "time" field in this mutation.
+func (m *WithdrawMutation) AddedTime() (r int64, exists bool) {
+	v := m.addtime
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTime resets all changes to the "time" field.
+func (m *WithdrawMutation) ResetTime() {
+	m.time = nil
+	m.addtime = nil
+}
+
+// SetAddress sets the "address" field.
+func (m *WithdrawMutation) SetAddress(s string) {
+	m.address = &s
+}
+
+// Address returns the value of the "address" field in the mutation.
+func (m *WithdrawMutation) Address() (r string, exists bool) {
+	v := m.address
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAddress returns the old "address" field's value of the Withdraw entity.
+// If the Withdraw object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WithdrawMutation) OldAddress(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAddress is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAddress requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAddress: %w", err)
+	}
+	return oldValue.Address, nil
+}
+
+// ResetAddress resets all changes to the "address" field.
+func (m *WithdrawMutation) ResetAddress() {
+	m.address = nil
+}
+
+// Where appends a list predicates to the WithdrawMutation builder.
+func (m *WithdrawMutation) Where(ps ...predicate.Withdraw) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the WithdrawMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *WithdrawMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Withdraw, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *WithdrawMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *WithdrawMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Withdraw).
+func (m *WithdrawMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *WithdrawMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.usdc != nil {
+		fields = append(fields, withdraw.FieldUsdc)
+	}
+	if m.nonce != nil {
+		fields = append(fields, withdraw.FieldNonce)
+	}
+	if m.fee != nil {
+		fields = append(fields, withdraw.FieldFee)
+	}
+	if m.time != nil {
+		fields = append(fields, withdraw.FieldTime)
+	}
+	if m.address != nil {
+		fields = append(fields, withdraw.FieldAddress)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *WithdrawMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case withdraw.FieldUsdc:
+		return m.Usdc()
+	case withdraw.FieldNonce:
+		return m.Nonce()
+	case withdraw.FieldFee:
+		return m.Fee()
+	case withdraw.FieldTime:
+		return m.Time()
+	case withdraw.FieldAddress:
+		return m.Address()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *WithdrawMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case withdraw.FieldUsdc:
+		return m.OldUsdc(ctx)
+	case withdraw.FieldNonce:
+		return m.OldNonce(ctx)
+	case withdraw.FieldFee:
+		return m.OldFee(ctx)
+	case withdraw.FieldTime:
+		return m.OldTime(ctx)
+	case withdraw.FieldAddress:
+		return m.OldAddress(ctx)
+	}
+	return nil, fmt.Errorf("unknown Withdraw field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WithdrawMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case withdraw.FieldUsdc:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUsdc(v)
+		return nil
+	case withdraw.FieldNonce:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNonce(v)
+		return nil
+	case withdraw.FieldFee:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFee(v)
+		return nil
+	case withdraw.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTime(v)
+		return nil
+	case withdraw.FieldAddress:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAddress(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Withdraw field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *WithdrawMutation) AddedFields() []string {
+	var fields []string
+	if m.addnonce != nil {
+		fields = append(fields, withdraw.FieldNonce)
+	}
+	if m.addtime != nil {
+		fields = append(fields, withdraw.FieldTime)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *WithdrawMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case withdraw.FieldNonce:
+		return m.AddedNonce()
+	case withdraw.FieldTime:
+		return m.AddedTime()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WithdrawMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case withdraw.FieldNonce:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddNonce(v)
+		return nil
+	case withdraw.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTime(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Withdraw numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *WithdrawMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *WithdrawMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *WithdrawMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Withdraw nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *WithdrawMutation) ResetField(name string) error {
+	switch name {
+	case withdraw.FieldUsdc:
+		m.ResetUsdc()
+		return nil
+	case withdraw.FieldNonce:
+		m.ResetNonce()
+		return nil
+	case withdraw.FieldFee:
+		m.ResetFee()
+		return nil
+	case withdraw.FieldTime:
+		m.ResetTime()
+		return nil
+	case withdraw.FieldAddress:
+		m.ResetAddress()
+		return nil
+	}
+	return fmt.Errorf("unknown Withdraw field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *WithdrawMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *WithdrawMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *WithdrawMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *WithdrawMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *WithdrawMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *WithdrawMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *WithdrawMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown Withdraw unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *WithdrawMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown Withdraw edge %s", name)
 }

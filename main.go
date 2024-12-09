@@ -115,6 +115,7 @@ type WSUserNonFundingLedgerUpdateDelta struct {
 	NetWithdrawnUsd string `json:"netWithdrawnUsd"`
 	Destination     string `json:"destination"`
 	Fee             string `json:"fee"`
+	Nonce           int64 `json:"nonce"`
 }
 
 type WSUserNonFundingLedgerUpdates struct {
@@ -520,6 +521,20 @@ func run(userAddress string, verbose bool, output_file string) {
 						update.Delta.User, update.Delta.Destination, update.Delta.Token, update.Delta.Amount, update.Delta.Fee, update.Time,
 					))
 				}
+			case "withdraw":
+				wip := client.Withdraw.Create().
+					SetUsdc(update.Delta.Usdc).
+					SetNonce(update.Delta.Nonce).
+					SetFee(update.Delta.Fee).
+					SetTime(update.Time).
+					SetAddress(userAddress)
+				wip.OnConflict().UpdateNewValues().IDX(ctx)
+				if verbose {
+					fmt.Println(fmt.Sprintf(
+						"[Withdraw] User: %s, Usdc:%s, Fee: %s, Time: %v",
+						update.Delta.User, update.Delta.Usdc, update.Delta.Fee, update.Time,
+					))
+				}
 			}
 		}
 
@@ -713,6 +728,20 @@ func run(userAddress string, verbose bool, output_file string) {
 								fmt.Println(fmt.Sprintf(
 									"[SpotTransfer] User: %s, Dest: %s, Token:%s, Amount: %s, Fee: %s, Time: %v",
 									update.Delta.User, update.Delta.Destination, update.Delta.Token, update.Delta.Amount, update.Delta.Fee, update.Time,
+								))
+							}
+						case "withdraw":
+							wip := client.Withdraw.Create().
+								SetUsdc(update.Delta.Usdc).
+								SetNonce(update.Delta.Nonce).
+								SetFee(update.Delta.Fee).
+								SetTime(update.Time).
+								SetAddress(userAddress)
+							wip.OnConflict().UpdateNewValues().IDX(ctx)
+							if verbose {
+								fmt.Println(fmt.Sprintf(
+									"[Withdraw] User: %s, Usdc:%s, Fee: %s, Time: %v",
+									update.Delta.User, update.Delta.Usdc, update.Delta.Fee, update.Time,
 								))
 							}
 						}

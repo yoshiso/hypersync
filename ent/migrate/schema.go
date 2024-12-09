@@ -213,6 +213,28 @@ var (
 			},
 		},
 	}
+	// WithdrawsColumns holds the columns for the "withdraws" table.
+	WithdrawsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "usdc", Type: field.TypeString},
+		{Name: "nonce", Type: field.TypeInt64},
+		{Name: "fee", Type: field.TypeString},
+		{Name: "time", Type: field.TypeInt64},
+		{Name: "address", Type: field.TypeString},
+	}
+	// WithdrawsTable holds the schema information for the "withdraws" table.
+	WithdrawsTable = &schema.Table{
+		Name:       "withdraws",
+		Columns:    WithdrawsColumns,
+		PrimaryKey: []*schema.Column{WithdrawsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "withdraw_address_time_nonce",
+				Unique:  true,
+				Columns: []*schema.Column{WithdrawsColumns[5], WithdrawsColumns[4], WithdrawsColumns[2]},
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		FillsTable,
@@ -224,6 +246,7 @@ var (
 		VaultDeltaTable,
 		VaultLeaderCommissionsTable,
 		VaultWithdrawalsTable,
+		WithdrawsTable,
 	}
 )
 

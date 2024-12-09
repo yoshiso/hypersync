@@ -117,6 +117,18 @@ func (f VaultWithdrawalFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Va
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.VaultWithdrawalMutation", m)
 }
 
+// The WithdrawFunc type is an adapter to allow the use of ordinary
+// function as Withdraw mutator.
+type WithdrawFunc func(context.Context, *ent.WithdrawMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f WithdrawFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.WithdrawMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WithdrawMutation", m)
+}
+
 // Condition is a hook condition function.
 type Condition func(context.Context, ent.Mutation) bool
 

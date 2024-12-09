@@ -32,3 +32,6 @@ type VaultLeaderCommission func(*sql.Selector)
 
 // VaultWithdrawal is the predicate function for vaultwithdrawal builders.
 type VaultWithdrawal func(*sql.Selector)
+
+// Withdraw is the predicate function for withdraw builders.
+type Withdraw func(*sql.Selector)

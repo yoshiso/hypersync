@@ -30,6 +30,8 @@ type Tx struct {
 	VaultLeaderCommission *VaultLeaderCommissionClient
 	// VaultWithdrawal is the client for interacting with the VaultWithdrawal builders.
 	VaultWithdrawal *VaultWithdrawalClient
+	// Withdraw is the client for interacting with the Withdraw builders.
+	Withdraw *WithdrawClient
 
 	// lazily loaded.
 	client     *Client
@@ -170,6 +172,7 @@ func (tx *Tx) init() {
 	tx.VaultDelta = NewVaultDeltaClient(tx.config)
 	tx.VaultLeaderCommission = NewVaultLeaderCommissionClient(tx.config)
 	tx.VaultWithdrawal = NewVaultWithdrawalClient(tx.config)
+	tx.Withdraw = NewWithdrawClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

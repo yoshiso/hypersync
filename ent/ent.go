@@ -21,6 +21,7 @@ import (
 	"github.com/yoshiso/hypersync/ent/vaultdelta"
 	"github.com/yoshiso/hypersync/ent/vaultleadercommission"
 	"github.com/yoshiso/hypersync/ent/vaultwithdrawal"
+	"github.com/yoshiso/hypersync/ent/withdraw"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -90,6 +91,7 @@ func checkColumn(table, column string) error {
 			vaultdelta.Table:            vaultdelta.ValidColumn,
 			vaultleadercommission.Table: vaultleadercommission.ValidColumn,
 			vaultwithdrawal.Table:       vaultwithdrawal.ValidColumn,
+			withdraw.Table:              withdraw.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)

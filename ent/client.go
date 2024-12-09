@@ -23,6 +23,7 @@ import (
 	"github.com/yoshiso/hypersync/ent/vaultdelta"
 	"github.com/yoshiso/hypersync/ent/vaultleadercommission"
 	"github.com/yoshiso/hypersync/ent/vaultwithdrawal"
+	"github.com/yoshiso/hypersync/ent/withdraw"
 )
 
 // Client is the client that holds all ent builders.
@@ -48,6 +49,8 @@ type Client struct {
 	VaultLeaderCommission *VaultLeaderCommissionClient
 	// VaultWithdrawal is the client for interacting with the VaultWithdrawal builders.
 	VaultWithdrawal *VaultWithdrawalClient
+	// Withdraw is the client for interacting with the Withdraw builders.
+	Withdraw *WithdrawClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -68,6 +71,7 @@ func (c *Client) init() {
 	c.VaultDelta = NewVaultDeltaClient(c.config)
 	c.VaultLeaderCommission = NewVaultLeaderCommissionClient(c.config)
 	c.VaultWithdrawal = NewVaultWithdrawalClient(c.config)
+	c.Withdraw = NewWithdrawClient(c.config)
 }
 
 type (
@@ -169,6 +173,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		VaultDelta:            NewVaultDeltaClient(cfg),
 		VaultLeaderCommission: NewVaultLeaderCommissionClient(cfg),
 		VaultWithdrawal:       NewVaultWithdrawalClient(cfg),
+		Withdraw:              NewWithdrawClient(cfg),
 	}, nil
 }
 
@@ -197,6 +202,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		VaultDelta:            NewVaultDeltaClient(cfg),
 		VaultLeaderCommission: NewVaultLeaderCommissionClient(cfg),
 		VaultWithdrawal:       NewVaultWithdrawalClient(cfg),
+		Withdraw:              NewWithdrawClient(cfg),
 	}, nil
 }
 
@@ -228,6 +234,7 @@ func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Fill, c.Funding, c.InternalTransfer, c.RewardsClaim, c.SpotGenesis,
 		c.SpotTransfer, c.VaultDelta, c.VaultLeaderCommission, c.VaultWithdrawal,
+		c.Withdraw,
 	} {
 		n.Use(hooks...)
 	}
@@ -239,6 +246,7 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Fill, c.Funding, c.InternalTransfer, c.RewardsClaim, c.SpotGenesis,
 		c.SpotTransfer, c.VaultDelta, c.VaultLeaderCommission, c.VaultWithdrawal,
+		c.Withdraw,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -265,6 +273,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.VaultLeaderCommission.mutate(ctx, m)
 	case *VaultWithdrawalMutation:
 		return c.VaultWithdrawal.mutate(ctx, m)
+	case *WithdrawMutation:
+		return c.Withdraw.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -1467,14 +1477,147 @@ func (c *VaultWithdrawalClient) mutate(ctx context.Context, m *VaultWithdrawalMu
 	}
 }
 
+// WithdrawClient is a client for the Withdraw schema.
+type WithdrawClient struct {
+	config
+}
+
+// NewWithdrawClient returns a client for the Withdraw from the given config.
+func NewWithdrawClient(c config) *WithdrawClient {
+	return &WithdrawClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `withdraw.Hooks(f(g(h())))`.
+func (c *WithdrawClient) Use(hooks ...Hook) {
+	c.hooks.Withdraw = append(c.hooks.Withdraw, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `withdraw.Intercept(f(g(h())))`.
+func (c *WithdrawClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Withdraw = append(c.inters.Withdraw, interceptors...)
+}
+
+// Create returns a builder for creating a Withdraw entity.
+func (c *WithdrawClient) Create() *WithdrawCreate {
+	mutation := newWithdrawMutation(c.config, OpCreate)
+	return &WithdrawCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Withdraw entities.
+func (c *WithdrawClient) CreateBulk(builders ...*WithdrawCreate) *WithdrawCreateBulk {
+	return &WithdrawCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *WithdrawClient) MapCreateBulk(slice any, setFunc func(*WithdrawCreate, int)) *WithdrawCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &WithdrawCreateBulk{err: fmt.Errorf("calling to WithdrawClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*WithdrawCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &WithdrawCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Withdraw.
+func (c *WithdrawClient) Update() *WithdrawUpdate {
+	mutation := newWithdrawMutation(c.config, OpUpdate)
+	return &WithdrawUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WithdrawClient) UpdateOne(w *Withdraw) *WithdrawUpdateOne {
+	mutation := newWithdrawMutation(c.config, OpUpdateOne, withWithdraw(w))
+	return &WithdrawUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WithdrawClient) UpdateOneID(id int) *WithdrawUpdateOne {
+	mutation := newWithdrawMutation(c.config, OpUpdateOne, withWithdrawID(id))
+	return &WithdrawUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Withdraw.
+func (c *WithdrawClient) Delete() *WithdrawDelete {
+	mutation := newWithdrawMutation(c.config, OpDelete)
+	return &WithdrawDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WithdrawClient) DeleteOne(w *Withdraw) *WithdrawDeleteOne {
+	return c.DeleteOneID(w.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WithdrawClient) DeleteOneID(id int) *WithdrawDeleteOne {
+	builder := c.Delete().Where(withdraw.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WithdrawDeleteOne{builder}
+}
+
+// Query returns a query builder for Withdraw.
+func (c *WithdrawClient) Query() *WithdrawQuery {
+	return &WithdrawQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWithdraw},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Withdraw entity by its id.
+func (c *WithdrawClient) Get(ctx context.Context, id int) (*Withdraw, error) {
+	return c.Query().Where(withdraw.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WithdrawClient) GetX(ctx context.Context, id int) *Withdraw {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *WithdrawClient) Hooks() []Hook {
+	return c.hooks.Withdraw
+}
+
+// Interceptors returns the client interceptors.
+func (c *WithdrawClient) Interceptors() []Interceptor {
+	return c.inters.Withdraw
+}
+
+func (c *WithdrawClient) mutate(ctx context.Context, m *WithdrawMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WithdrawCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WithdrawUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WithdrawUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WithdrawDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Withdraw mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
 		Fill, Funding, InternalTransfer, RewardsClaim, SpotGenesis, SpotTransfer,
-		VaultDelta, VaultLeaderCommission, VaultWithdrawal []ent.Hook
+		VaultDelta, VaultLeaderCommission, VaultWithdrawal, Withdraw []ent.Hook
 	}
 	inters struct {
 		Fill, Funding, InternalTransfer, RewardsClaim, SpotGenesis, SpotTransfer,
-		VaultDelta, VaultLeaderCommission, VaultWithdrawal []ent.Interceptor
+		VaultDelta, VaultLeaderCommission, VaultWithdrawal, Withdraw []ent.Interceptor
 	}
 )

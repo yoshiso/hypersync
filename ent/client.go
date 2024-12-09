@@ -18,6 +18,9 @@ import (
 	"github.com/yoshiso/hypersync/ent/funding"
 	"github.com/yoshiso/hypersync/ent/rewardsclaim"
 	"github.com/yoshiso/hypersync/ent/spotgenesis"
+	"github.com/yoshiso/hypersync/ent/vaultdelta"
+	"github.com/yoshiso/hypersync/ent/vaultleadercommission"
+	"github.com/yoshiso/hypersync/ent/vaultwithdrawal"
 )
 
 // Client is the client that holds all ent builders.
@@ -33,6 +36,12 @@ type Client struct {
 	RewardsClaim *RewardsClaimClient
 	// SpotGenesis is the client for interacting with the SpotGenesis builders.
 	SpotGenesis *SpotGenesisClient
+	// VaultDelta is the client for interacting with the VaultDelta builders.
+	VaultDelta *VaultDeltaClient
+	// VaultLeaderCommission is the client for interacting with the VaultLeaderCommission builders.
+	VaultLeaderCommission *VaultLeaderCommissionClient
+	// VaultWithdrawal is the client for interacting with the VaultWithdrawal builders.
+	VaultWithdrawal *VaultWithdrawalClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -48,6 +57,9 @@ func (c *Client) init() {
 	c.Funding = NewFundingClient(c.config)
 	c.RewardsClaim = NewRewardsClaimClient(c.config)
 	c.SpotGenesis = NewSpotGenesisClient(c.config)
+	c.VaultDelta = NewVaultDeltaClient(c.config)
+	c.VaultLeaderCommission = NewVaultLeaderCommissionClient(c.config)
+	c.VaultWithdrawal = NewVaultWithdrawalClient(c.config)
 }
 
 type (
@@ -138,12 +150,15 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:          ctx,
-		config:       cfg,
-		Fill:         NewFillClient(cfg),
-		Funding:      NewFundingClient(cfg),
-		RewardsClaim: NewRewardsClaimClient(cfg),
-		SpotGenesis:  NewSpotGenesisClient(cfg),
+		ctx:                   ctx,
+		config:                cfg,
+		Fill:                  NewFillClient(cfg),
+		Funding:               NewFundingClient(cfg),
+		RewardsClaim:          NewRewardsClaimClient(cfg),
+		SpotGenesis:           NewSpotGenesisClient(cfg),
+		VaultDelta:            NewVaultDeltaClient(cfg),
+		VaultLeaderCommission: NewVaultLeaderCommissionClient(cfg),
+		VaultWithdrawal:       NewVaultWithdrawalClient(cfg),
 	}, nil
 }
 
@@ -161,12 +176,15 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:          ctx,
-		config:       cfg,
-		Fill:         NewFillClient(cfg),
-		Funding:      NewFundingClient(cfg),
-		RewardsClaim: NewRewardsClaimClient(cfg),
-		SpotGenesis:  NewSpotGenesisClient(cfg),
+		ctx:                   ctx,
+		config:                cfg,
+		Fill:                  NewFillClient(cfg),
+		Funding:               NewFundingClient(cfg),
+		RewardsClaim:          NewRewardsClaimClient(cfg),
+		SpotGenesis:           NewSpotGenesisClient(cfg),
+		VaultDelta:            NewVaultDeltaClient(cfg),
+		VaultLeaderCommission: NewVaultLeaderCommissionClient(cfg),
+		VaultWithdrawal:       NewVaultWithdrawalClient(cfg),
 	}, nil
 }
 
@@ -195,19 +213,23 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
-	c.Fill.Use(hooks...)
-	c.Funding.Use(hooks...)
-	c.RewardsClaim.Use(hooks...)
-	c.SpotGenesis.Use(hooks...)
+	for _, n := range []interface{ Use(...Hook) }{
+		c.Fill, c.Funding, c.RewardsClaim, c.SpotGenesis, c.VaultDelta,
+		c.VaultLeaderCommission, c.VaultWithdrawal,
+	} {
+		n.Use(hooks...)
+	}
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
-	c.Fill.Intercept(interceptors...)
-	c.Funding.Intercept(interceptors...)
-	c.RewardsClaim.Intercept(interceptors...)
-	c.SpotGenesis.Intercept(interceptors...)
+	for _, n := range []interface{ Intercept(...Interceptor) }{
+		c.Fill, c.Funding, c.RewardsClaim, c.SpotGenesis, c.VaultDelta,
+		c.VaultLeaderCommission, c.VaultWithdrawal,
+	} {
+		n.Intercept(interceptors...)
+	}
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -221,6 +243,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.RewardsClaim.mutate(ctx, m)
 	case *SpotGenesisMutation:
 		return c.SpotGenesis.mutate(ctx, m)
+	case *VaultDeltaMutation:
+		return c.VaultDelta.mutate(ctx, m)
+	case *VaultLeaderCommissionMutation:
+		return c.VaultLeaderCommission.mutate(ctx, m)
+	case *VaultWithdrawalMutation:
+		return c.VaultWithdrawal.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -758,12 +786,413 @@ func (c *SpotGenesisClient) mutate(ctx context.Context, m *SpotGenesisMutation) 
 	}
 }
 
+// VaultDeltaClient is a client for the VaultDelta schema.
+type VaultDeltaClient struct {
+	config
+}
+
+// NewVaultDeltaClient returns a client for the VaultDelta from the given config.
+func NewVaultDeltaClient(c config) *VaultDeltaClient {
+	return &VaultDeltaClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `vaultdelta.Hooks(f(g(h())))`.
+func (c *VaultDeltaClient) Use(hooks ...Hook) {
+	c.hooks.VaultDelta = append(c.hooks.VaultDelta, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `vaultdelta.Intercept(f(g(h())))`.
+func (c *VaultDeltaClient) Intercept(interceptors ...Interceptor) {
+	c.inters.VaultDelta = append(c.inters.VaultDelta, interceptors...)
+}
+
+// Create returns a builder for creating a VaultDelta entity.
+func (c *VaultDeltaClient) Create() *VaultDeltaCreate {
+	mutation := newVaultDeltaMutation(c.config, OpCreate)
+	return &VaultDeltaCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of VaultDelta entities.
+func (c *VaultDeltaClient) CreateBulk(builders ...*VaultDeltaCreate) *VaultDeltaCreateBulk {
+	return &VaultDeltaCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *VaultDeltaClient) MapCreateBulk(slice any, setFunc func(*VaultDeltaCreate, int)) *VaultDeltaCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &VaultDeltaCreateBulk{err: fmt.Errorf("calling to VaultDeltaClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*VaultDeltaCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &VaultDeltaCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for VaultDelta.
+func (c *VaultDeltaClient) Update() *VaultDeltaUpdate {
+	mutation := newVaultDeltaMutation(c.config, OpUpdate)
+	return &VaultDeltaUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *VaultDeltaClient) UpdateOne(vd *VaultDelta) *VaultDeltaUpdateOne {
+	mutation := newVaultDeltaMutation(c.config, OpUpdateOne, withVaultDelta(vd))
+	return &VaultDeltaUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *VaultDeltaClient) UpdateOneID(id int) *VaultDeltaUpdateOne {
+	mutation := newVaultDeltaMutation(c.config, OpUpdateOne, withVaultDeltaID(id))
+	return &VaultDeltaUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for VaultDelta.
+func (c *VaultDeltaClient) Delete() *VaultDeltaDelete {
+	mutation := newVaultDeltaMutation(c.config, OpDelete)
+	return &VaultDeltaDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *VaultDeltaClient) DeleteOne(vd *VaultDelta) *VaultDeltaDeleteOne {
+	return c.DeleteOneID(vd.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *VaultDeltaClient) DeleteOneID(id int) *VaultDeltaDeleteOne {
+	builder := c.Delete().Where(vaultdelta.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &VaultDeltaDeleteOne{builder}
+}
+
+// Query returns a query builder for VaultDelta.
+func (c *VaultDeltaClient) Query() *VaultDeltaQuery {
+	return &VaultDeltaQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeVaultDelta},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a VaultDelta entity by its id.
+func (c *VaultDeltaClient) Get(ctx context.Context, id int) (*VaultDelta, error) {
+	return c.Query().Where(vaultdelta.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *VaultDeltaClient) GetX(ctx context.Context, id int) *VaultDelta {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *VaultDeltaClient) Hooks() []Hook {
+	return c.hooks.VaultDelta
+}
+
+// Interceptors returns the client interceptors.
+func (c *VaultDeltaClient) Interceptors() []Interceptor {
+	return c.inters.VaultDelta
+}
+
+func (c *VaultDeltaClient) mutate(ctx context.Context, m *VaultDeltaMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&VaultDeltaCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&VaultDeltaUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&VaultDeltaUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&VaultDeltaDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown VaultDelta mutation op: %q", m.Op())
+	}
+}
+
+// VaultLeaderCommissionClient is a client for the VaultLeaderCommission schema.
+type VaultLeaderCommissionClient struct {
+	config
+}
+
+// NewVaultLeaderCommissionClient returns a client for the VaultLeaderCommission from the given config.
+func NewVaultLeaderCommissionClient(c config) *VaultLeaderCommissionClient {
+	return &VaultLeaderCommissionClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `vaultleadercommission.Hooks(f(g(h())))`.
+func (c *VaultLeaderCommissionClient) Use(hooks ...Hook) {
+	c.hooks.VaultLeaderCommission = append(c.hooks.VaultLeaderCommission, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `vaultleadercommission.Intercept(f(g(h())))`.
+func (c *VaultLeaderCommissionClient) Intercept(interceptors ...Interceptor) {
+	c.inters.VaultLeaderCommission = append(c.inters.VaultLeaderCommission, interceptors...)
+}
+
+// Create returns a builder for creating a VaultLeaderCommission entity.
+func (c *VaultLeaderCommissionClient) Create() *VaultLeaderCommissionCreate {
+	mutation := newVaultLeaderCommissionMutation(c.config, OpCreate)
+	return &VaultLeaderCommissionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of VaultLeaderCommission entities.
+func (c *VaultLeaderCommissionClient) CreateBulk(builders ...*VaultLeaderCommissionCreate) *VaultLeaderCommissionCreateBulk {
+	return &VaultLeaderCommissionCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *VaultLeaderCommissionClient) MapCreateBulk(slice any, setFunc func(*VaultLeaderCommissionCreate, int)) *VaultLeaderCommissionCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &VaultLeaderCommissionCreateBulk{err: fmt.Errorf("calling to VaultLeaderCommissionClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*VaultLeaderCommissionCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &VaultLeaderCommissionCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for VaultLeaderCommission.
+func (c *VaultLeaderCommissionClient) Update() *VaultLeaderCommissionUpdate {
+	mutation := newVaultLeaderCommissionMutation(c.config, OpUpdate)
+	return &VaultLeaderCommissionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *VaultLeaderCommissionClient) UpdateOne(vlc *VaultLeaderCommission) *VaultLeaderCommissionUpdateOne {
+	mutation := newVaultLeaderCommissionMutation(c.config, OpUpdateOne, withVaultLeaderCommission(vlc))
+	return &VaultLeaderCommissionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *VaultLeaderCommissionClient) UpdateOneID(id int) *VaultLeaderCommissionUpdateOne {
+	mutation := newVaultLeaderCommissionMutation(c.config, OpUpdateOne, withVaultLeaderCommissionID(id))
+	return &VaultLeaderCommissionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for VaultLeaderCommission.
+func (c *VaultLeaderCommissionClient) Delete() *VaultLeaderCommissionDelete {
+	mutation := newVaultLeaderCommissionMutation(c.config, OpDelete)
+	return &VaultLeaderCommissionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *VaultLeaderCommissionClient) DeleteOne(vlc *VaultLeaderCommission) *VaultLeaderCommissionDeleteOne {
+	return c.DeleteOneID(vlc.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *VaultLeaderCommissionClient) DeleteOneID(id int) *VaultLeaderCommissionDeleteOne {
+	builder := c.Delete().Where(vaultleadercommission.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &VaultLeaderCommissionDeleteOne{builder}
+}
+
+// Query returns a query builder for VaultLeaderCommission.
+func (c *VaultLeaderCommissionClient) Query() *VaultLeaderCommissionQuery {
+	return &VaultLeaderCommissionQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeVaultLeaderCommission},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a VaultLeaderCommission entity by its id.
+func (c *VaultLeaderCommissionClient) Get(ctx context.Context, id int) (*VaultLeaderCommission, error) {
+	return c.Query().Where(vaultleadercommission.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *VaultLeaderCommissionClient) GetX(ctx context.Context, id int) *VaultLeaderCommission {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *VaultLeaderCommissionClient) Hooks() []Hook {
+	return c.hooks.VaultLeaderCommission
+}
+
+// Interceptors returns the client interceptors.
+func (c *VaultLeaderCommissionClient) Interceptors() []Interceptor {
+	return c.inters.VaultLeaderCommission
+}
+
+func (c *VaultLeaderCommissionClient) mutate(ctx context.Context, m *VaultLeaderCommissionMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&VaultLeaderCommissionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&VaultLeaderCommissionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&VaultLeaderCommissionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&VaultLeaderCommissionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown VaultLeaderCommission mutation op: %q", m.Op())
+	}
+}
+
+// VaultWithdrawalClient is a client for the VaultWithdrawal schema.
+type VaultWithdrawalClient struct {
+	config
+}
+
+// NewVaultWithdrawalClient returns a client for the VaultWithdrawal from the given config.
+func NewVaultWithdrawalClient(c config) *VaultWithdrawalClient {
+	return &VaultWithdrawalClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `vaultwithdrawal.Hooks(f(g(h())))`.
+func (c *VaultWithdrawalClient) Use(hooks ...Hook) {
+	c.hooks.VaultWithdrawal = append(c.hooks.VaultWithdrawal, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `vaultwithdrawal.Intercept(f(g(h())))`.
+func (c *VaultWithdrawalClient) Intercept(interceptors ...Interceptor) {
+	c.inters.VaultWithdrawal = append(c.inters.VaultWithdrawal, interceptors...)
+}
+
+// Create returns a builder for creating a VaultWithdrawal entity.
+func (c *VaultWithdrawalClient) Create() *VaultWithdrawalCreate {
+	mutation := newVaultWithdrawalMutation(c.config, OpCreate)
+	return &VaultWithdrawalCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of VaultWithdrawal entities.
+func (c *VaultWithdrawalClient) CreateBulk(builders ...*VaultWithdrawalCreate) *VaultWithdrawalCreateBulk {
+	return &VaultWithdrawalCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *VaultWithdrawalClient) MapCreateBulk(slice any, setFunc func(*VaultWithdrawalCreate, int)) *VaultWithdrawalCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &VaultWithdrawalCreateBulk{err: fmt.Errorf("calling to VaultWithdrawalClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*VaultWithdrawalCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &VaultWithdrawalCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for VaultWithdrawal.
+func (c *VaultWithdrawalClient) Update() *VaultWithdrawalUpdate {
+	mutation := newVaultWithdrawalMutation(c.config, OpUpdate)
+	return &VaultWithdrawalUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *VaultWithdrawalClient) UpdateOne(vw *VaultWithdrawal) *VaultWithdrawalUpdateOne {
+	mutation := newVaultWithdrawalMutation(c.config, OpUpdateOne, withVaultWithdrawal(vw))
+	return &VaultWithdrawalUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *VaultWithdrawalClient) UpdateOneID(id int) *VaultWithdrawalUpdateOne {
+	mutation := newVaultWithdrawalMutation(c.config, OpUpdateOne, withVaultWithdrawalID(id))
+	return &VaultWithdrawalUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for VaultWithdrawal.
+func (c *VaultWithdrawalClient) Delete() *VaultWithdrawalDelete {
+	mutation := newVaultWithdrawalMutation(c.config, OpDelete)
+	return &VaultWithdrawalDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *VaultWithdrawalClient) DeleteOne(vw *VaultWithdrawal) *VaultWithdrawalDeleteOne {
+	return c.DeleteOneID(vw.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *VaultWithdrawalClient) DeleteOneID(id int) *VaultWithdrawalDeleteOne {
+	builder := c.Delete().Where(vaultwithdrawal.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &VaultWithdrawalDeleteOne{builder}
+}
+
+// Query returns a query builder for VaultWithdrawal.
+func (c *VaultWithdrawalClient) Query() *VaultWithdrawalQuery {
+	return &VaultWithdrawalQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeVaultWithdrawal},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a VaultWithdrawal entity by its id.
+func (c *VaultWithdrawalClient) Get(ctx context.Context, id int) (*VaultWithdrawal, error) {
+	return c.Query().Where(vaultwithdrawal.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *VaultWithdrawalClient) GetX(ctx context.Context, id int) *VaultWithdrawal {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *VaultWithdrawalClient) Hooks() []Hook {
+	return c.hooks.VaultWithdrawal
+}
+
+// Interceptors returns the client interceptors.
+func (c *VaultWithdrawalClient) Interceptors() []Interceptor {
+	return c.inters.VaultWithdrawal
+}
+
+func (c *VaultWithdrawalClient) mutate(ctx context.Context, m *VaultWithdrawalMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&VaultWithdrawalCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&VaultWithdrawalUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&VaultWithdrawalUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&VaultWithdrawalDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown VaultWithdrawal mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Fill, Funding, RewardsClaim, SpotGenesis []ent.Hook
+		Fill, Funding, RewardsClaim, SpotGenesis, VaultDelta, VaultLeaderCommission,
+		VaultWithdrawal []ent.Hook
 	}
 	inters struct {
-		Fill, Funding, RewardsClaim, SpotGenesis []ent.Interceptor
+		Fill, Funding, RewardsClaim, SpotGenesis, VaultDelta, VaultLeaderCommission,
+		VaultWithdrawal []ent.Interceptor
 	}
 )

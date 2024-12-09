@@ -20,6 +20,12 @@ type Tx struct {
 	RewardsClaim *RewardsClaimClient
 	// SpotGenesis is the client for interacting with the SpotGenesis builders.
 	SpotGenesis *SpotGenesisClient
+	// VaultDelta is the client for interacting with the VaultDelta builders.
+	VaultDelta *VaultDeltaClient
+	// VaultLeaderCommission is the client for interacting with the VaultLeaderCommission builders.
+	VaultLeaderCommission *VaultLeaderCommissionClient
+	// VaultWithdrawal is the client for interacting with the VaultWithdrawal builders.
+	VaultWithdrawal *VaultWithdrawalClient
 
 	// lazily loaded.
 	client     *Client
@@ -155,6 +161,9 @@ func (tx *Tx) init() {
 	tx.Funding = NewFundingClient(tx.config)
 	tx.RewardsClaim = NewRewardsClaimClient(tx.config)
 	tx.SpotGenesis = NewSpotGenesisClient(tx.config)
+	tx.VaultDelta = NewVaultDeltaClient(tx.config)
+	tx.VaultLeaderCommission = NewVaultLeaderCommissionClient(tx.config)
+	tx.VaultWithdrawal = NewVaultWithdrawalClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

@@ -7,27 +7,29 @@ import (
 )
 
 // User holds the schema definition for the User entity.
-type RewardsClaim struct {
+type VaultLeaderCommission struct {
     ent.Schema
 }
 
 // Fields of the User.
-func (RewardsClaim) Fields() []ent.Field {
+func (VaultLeaderCommission) Fields() []ent.Field {
     return []ent.Field{
-        field.String("amount"),
+        field.String("user"),
+        field.String("usdc"),
         field.Int64("time"),
         field.String("address"),
     }
 }
 
 // Edges of the User.
-func (RewardsClaim) Edges() []ent.Edge {
+func (VaultLeaderCommission) Edges() []ent.Edge {
     return nil
 }
 
-func (RewardsClaim) Indexes() []ent.Index {
+
+func (VaultLeaderCommission) Indexes() []ent.Index {
     return []ent.Index{
-        index.Fields("address", "time").
+        index.Fields("address", "time", "user").
             Unique(),
     }
 }

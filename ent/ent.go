@@ -16,6 +16,9 @@ import (
 	"github.com/yoshiso/hypersync/ent/funding"
 	"github.com/yoshiso/hypersync/ent/rewardsclaim"
 	"github.com/yoshiso/hypersync/ent/spotgenesis"
+	"github.com/yoshiso/hypersync/ent/vaultdelta"
+	"github.com/yoshiso/hypersync/ent/vaultleadercommission"
+	"github.com/yoshiso/hypersync/ent/vaultwithdrawal"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -76,10 +79,13 @@ var (
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			fill.Table:         fill.ValidColumn,
-			funding.Table:      funding.ValidColumn,
-			rewardsclaim.Table: rewardsclaim.ValidColumn,
-			spotgenesis.Table:  spotgenesis.ValidColumn,
+			fill.Table:                  fill.ValidColumn,
+			funding.Table:               funding.ValidColumn,
+			rewardsclaim.Table:          rewardsclaim.ValidColumn,
+			spotgenesis.Table:           spotgenesis.ValidColumn,
+			vaultdelta.Table:            vaultdelta.ValidColumn,
+			vaultleadercommission.Table: vaultleadercommission.ValidColumn,
+			vaultwithdrawal.Table:       vaultwithdrawal.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)

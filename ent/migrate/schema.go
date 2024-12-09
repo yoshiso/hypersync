@@ -68,6 +68,13 @@ var (
 		Name:       "rewards_claims",
 		Columns:    RewardsClaimsColumns,
 		PrimaryKey: []*schema.Column{RewardsClaimsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "rewardsclaim_address_time",
+				Unique:  true,
+				Columns: []*schema.Column{RewardsClaimsColumns[3], RewardsClaimsColumns[2]},
+			},
+		},
 	}
 	// SpotGenesesColumns holds the columns for the "spot_geneses" table.
 	SpotGenesesColumns = []*schema.Column{
@@ -82,6 +89,82 @@ var (
 		Name:       "spot_geneses",
 		Columns:    SpotGenesesColumns,
 		PrimaryKey: []*schema.Column{SpotGenesesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "spotgenesis_address_time_coin",
+				Unique:  true,
+				Columns: []*schema.Column{SpotGenesesColumns[4], SpotGenesesColumns[3], SpotGenesesColumns[1]},
+			},
+		},
+	}
+	// VaultDeltaColumns holds the columns for the "vault_delta" table.
+	VaultDeltaColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "type", Type: field.TypeString},
+		{Name: "vault", Type: field.TypeString},
+		{Name: "usdc", Type: field.TypeString},
+		{Name: "time", Type: field.TypeInt64},
+		{Name: "address", Type: field.TypeString},
+	}
+	// VaultDeltaTable holds the schema information for the "vault_delta" table.
+	VaultDeltaTable = &schema.Table{
+		Name:       "vault_delta",
+		Columns:    VaultDeltaColumns,
+		PrimaryKey: []*schema.Column{VaultDeltaColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "vaultdelta_address_time_vault",
+				Unique:  true,
+				Columns: []*schema.Column{VaultDeltaColumns[5], VaultDeltaColumns[4], VaultDeltaColumns[2]},
+			},
+		},
+	}
+	// VaultLeaderCommissionsColumns holds the columns for the "vault_leader_commissions" table.
+	VaultLeaderCommissionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "user", Type: field.TypeString},
+		{Name: "usdc", Type: field.TypeString},
+		{Name: "time", Type: field.TypeInt64},
+		{Name: "address", Type: field.TypeString},
+	}
+	// VaultLeaderCommissionsTable holds the schema information for the "vault_leader_commissions" table.
+	VaultLeaderCommissionsTable = &schema.Table{
+		Name:       "vault_leader_commissions",
+		Columns:    VaultLeaderCommissionsColumns,
+		PrimaryKey: []*schema.Column{VaultLeaderCommissionsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "vaultleadercommission_address_time_user",
+				Unique:  true,
+				Columns: []*schema.Column{VaultLeaderCommissionsColumns[4], VaultLeaderCommissionsColumns[3], VaultLeaderCommissionsColumns[1]},
+			},
+		},
+	}
+	// VaultWithdrawalsColumns holds the columns for the "vault_withdrawals" table.
+	VaultWithdrawalsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "vault", Type: field.TypeString},
+		{Name: "user", Type: field.TypeString},
+		{Name: "requested_usd", Type: field.TypeString},
+		{Name: "commission", Type: field.TypeString},
+		{Name: "closing_cost", Type: field.TypeString},
+		{Name: "basis", Type: field.TypeString},
+		{Name: "net_withdrawn_usd", Type: field.TypeString},
+		{Name: "time", Type: field.TypeInt64},
+		{Name: "address", Type: field.TypeString},
+	}
+	// VaultWithdrawalsTable holds the schema information for the "vault_withdrawals" table.
+	VaultWithdrawalsTable = &schema.Table{
+		Name:       "vault_withdrawals",
+		Columns:    VaultWithdrawalsColumns,
+		PrimaryKey: []*schema.Column{VaultWithdrawalsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "vaultwithdrawal_address_time_vault",
+				Unique:  true,
+				Columns: []*schema.Column{VaultWithdrawalsColumns[9], VaultWithdrawalsColumns[8], VaultWithdrawalsColumns[1]},
+			},
+		},
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
@@ -89,6 +172,9 @@ var (
 		FundingsTable,
 		RewardsClaimsTable,
 		SpotGenesesTable,
+		VaultDeltaTable,
+		VaultLeaderCommissionsTable,
+		VaultWithdrawalsTable,
 	}
 )
 

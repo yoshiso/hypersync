@@ -15,6 +15,9 @@ import (
 	"github.com/yoshiso/hypersync/ent/predicate"
 	"github.com/yoshiso/hypersync/ent/rewardsclaim"
 	"github.com/yoshiso/hypersync/ent/spotgenesis"
+	"github.com/yoshiso/hypersync/ent/vaultdelta"
+	"github.com/yoshiso/hypersync/ent/vaultleadercommission"
+	"github.com/yoshiso/hypersync/ent/vaultwithdrawal"
 )
 
 const (
@@ -26,10 +29,13 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeFill         = "Fill"
-	TypeFunding      = "Funding"
-	TypeRewardsClaim = "RewardsClaim"
-	TypeSpotGenesis  = "SpotGenesis"
+	TypeFill                  = "Fill"
+	TypeFunding               = "Funding"
+	TypeRewardsClaim          = "RewardsClaim"
+	TypeSpotGenesis           = "SpotGenesis"
+	TypeVaultDelta            = "VaultDelta"
+	TypeVaultLeaderCommission = "VaultLeaderCommission"
+	TypeVaultWithdrawal       = "VaultWithdrawal"
 )
 
 // FillMutation represents an operation that mutates the Fill nodes in the graph.
@@ -2862,4 +2868,1900 @@ func (m *SpotGenesisMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *SpotGenesisMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown SpotGenesis edge %s", name)
+}
+
+// VaultDeltaMutation represents an operation that mutates the VaultDelta nodes in the graph.
+type VaultDeltaMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	_type         *string
+	vault         *string
+	usdc          *string
+	time          *int64
+	addtime       *int64
+	address       *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*VaultDelta, error)
+	predicates    []predicate.VaultDelta
+}
+
+var _ ent.Mutation = (*VaultDeltaMutation)(nil)
+
+// vaultdeltaOption allows management of the mutation configuration using functional options.
+type vaultdeltaOption func(*VaultDeltaMutation)
+
+// newVaultDeltaMutation creates new mutation for the VaultDelta entity.
+func newVaultDeltaMutation(c config, op Op, opts ...vaultdeltaOption) *VaultDeltaMutation {
+	m := &VaultDeltaMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeVaultDelta,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withVaultDeltaID sets the ID field of the mutation.
+func withVaultDeltaID(id int) vaultdeltaOption {
+	return func(m *VaultDeltaMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *VaultDelta
+		)
+		m.oldValue = func(ctx context.Context) (*VaultDelta, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().VaultDelta.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withVaultDelta sets the old VaultDelta of the mutation.
+func withVaultDelta(node *VaultDelta) vaultdeltaOption {
+	return func(m *VaultDeltaMutation) {
+		m.oldValue = func(context.Context) (*VaultDelta, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m VaultDeltaMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m VaultDeltaMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *VaultDeltaMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *VaultDeltaMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().VaultDelta.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetType sets the "type" field.
+func (m *VaultDeltaMutation) SetType(s string) {
+	m._type = &s
+}
+
+// GetType returns the value of the "type" field in the mutation.
+func (m *VaultDeltaMutation) GetType() (r string, exists bool) {
+	v := m._type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldType returns the old "type" field's value of the VaultDelta entity.
+// If the VaultDelta object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultDeltaMutation) OldType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldType: %w", err)
+	}
+	return oldValue.Type, nil
+}
+
+// ResetType resets all changes to the "type" field.
+func (m *VaultDeltaMutation) ResetType() {
+	m._type = nil
+}
+
+// SetVault sets the "vault" field.
+func (m *VaultDeltaMutation) SetVault(s string) {
+	m.vault = &s
+}
+
+// Vault returns the value of the "vault" field in the mutation.
+func (m *VaultDeltaMutation) Vault() (r string, exists bool) {
+	v := m.vault
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldVault returns the old "vault" field's value of the VaultDelta entity.
+// If the VaultDelta object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultDeltaMutation) OldVault(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldVault is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldVault requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldVault: %w", err)
+	}
+	return oldValue.Vault, nil
+}
+
+// ResetVault resets all changes to the "vault" field.
+func (m *VaultDeltaMutation) ResetVault() {
+	m.vault = nil
+}
+
+// SetUsdc sets the "usdc" field.
+func (m *VaultDeltaMutation) SetUsdc(s string) {
+	m.usdc = &s
+}
+
+// Usdc returns the value of the "usdc" field in the mutation.
+func (m *VaultDeltaMutation) Usdc() (r string, exists bool) {
+	v := m.usdc
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUsdc returns the old "usdc" field's value of the VaultDelta entity.
+// If the VaultDelta object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultDeltaMutation) OldUsdc(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUsdc is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUsdc requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUsdc: %w", err)
+	}
+	return oldValue.Usdc, nil
+}
+
+// ResetUsdc resets all changes to the "usdc" field.
+func (m *VaultDeltaMutation) ResetUsdc() {
+	m.usdc = nil
+}
+
+// SetTime sets the "time" field.
+func (m *VaultDeltaMutation) SetTime(i int64) {
+	m.time = &i
+	m.addtime = nil
+}
+
+// Time returns the value of the "time" field in the mutation.
+func (m *VaultDeltaMutation) Time() (r int64, exists bool) {
+	v := m.time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTime returns the old "time" field's value of the VaultDelta entity.
+// If the VaultDelta object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultDeltaMutation) OldTime(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTime: %w", err)
+	}
+	return oldValue.Time, nil
+}
+
+// AddTime adds i to the "time" field.
+func (m *VaultDeltaMutation) AddTime(i int64) {
+	if m.addtime != nil {
+		*m.addtime += i
+	} else {
+		m.addtime = &i
+	}
+}
+
+// AddedTime returns the value that was added to the "time" field in this mutation.
+func (m *VaultDeltaMutation) AddedTime() (r int64, exists bool) {
+	v := m.addtime
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTime resets all changes to the "time" field.
+func (m *VaultDeltaMutation) ResetTime() {
+	m.time = nil
+	m.addtime = nil
+}
+
+// SetAddress sets the "address" field.
+func (m *VaultDeltaMutation) SetAddress(s string) {
+	m.address = &s
+}
+
+// Address returns the value of the "address" field in the mutation.
+func (m *VaultDeltaMutation) Address() (r string, exists bool) {
+	v := m.address
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAddress returns the old "address" field's value of the VaultDelta entity.
+// If the VaultDelta object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultDeltaMutation) OldAddress(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAddress is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAddress requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAddress: %w", err)
+	}
+	return oldValue.Address, nil
+}
+
+// ResetAddress resets all changes to the "address" field.
+func (m *VaultDeltaMutation) ResetAddress() {
+	m.address = nil
+}
+
+// Where appends a list predicates to the VaultDeltaMutation builder.
+func (m *VaultDeltaMutation) Where(ps ...predicate.VaultDelta) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the VaultDeltaMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *VaultDeltaMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.VaultDelta, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *VaultDeltaMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *VaultDeltaMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (VaultDelta).
+func (m *VaultDeltaMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *VaultDeltaMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m._type != nil {
+		fields = append(fields, vaultdelta.FieldType)
+	}
+	if m.vault != nil {
+		fields = append(fields, vaultdelta.FieldVault)
+	}
+	if m.usdc != nil {
+		fields = append(fields, vaultdelta.FieldUsdc)
+	}
+	if m.time != nil {
+		fields = append(fields, vaultdelta.FieldTime)
+	}
+	if m.address != nil {
+		fields = append(fields, vaultdelta.FieldAddress)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *VaultDeltaMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case vaultdelta.FieldType:
+		return m.GetType()
+	case vaultdelta.FieldVault:
+		return m.Vault()
+	case vaultdelta.FieldUsdc:
+		return m.Usdc()
+	case vaultdelta.FieldTime:
+		return m.Time()
+	case vaultdelta.FieldAddress:
+		return m.Address()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *VaultDeltaMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case vaultdelta.FieldType:
+		return m.OldType(ctx)
+	case vaultdelta.FieldVault:
+		return m.OldVault(ctx)
+	case vaultdelta.FieldUsdc:
+		return m.OldUsdc(ctx)
+	case vaultdelta.FieldTime:
+		return m.OldTime(ctx)
+	case vaultdelta.FieldAddress:
+		return m.OldAddress(ctx)
+	}
+	return nil, fmt.Errorf("unknown VaultDelta field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *VaultDeltaMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case vaultdelta.FieldType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetType(v)
+		return nil
+	case vaultdelta.FieldVault:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetVault(v)
+		return nil
+	case vaultdelta.FieldUsdc:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUsdc(v)
+		return nil
+	case vaultdelta.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTime(v)
+		return nil
+	case vaultdelta.FieldAddress:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAddress(v)
+		return nil
+	}
+	return fmt.Errorf("unknown VaultDelta field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *VaultDeltaMutation) AddedFields() []string {
+	var fields []string
+	if m.addtime != nil {
+		fields = append(fields, vaultdelta.FieldTime)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *VaultDeltaMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case vaultdelta.FieldTime:
+		return m.AddedTime()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *VaultDeltaMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case vaultdelta.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTime(v)
+		return nil
+	}
+	return fmt.Errorf("unknown VaultDelta numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *VaultDeltaMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *VaultDeltaMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *VaultDeltaMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown VaultDelta nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *VaultDeltaMutation) ResetField(name string) error {
+	switch name {
+	case vaultdelta.FieldType:
+		m.ResetType()
+		return nil
+	case vaultdelta.FieldVault:
+		m.ResetVault()
+		return nil
+	case vaultdelta.FieldUsdc:
+		m.ResetUsdc()
+		return nil
+	case vaultdelta.FieldTime:
+		m.ResetTime()
+		return nil
+	case vaultdelta.FieldAddress:
+		m.ResetAddress()
+		return nil
+	}
+	return fmt.Errorf("unknown VaultDelta field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *VaultDeltaMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *VaultDeltaMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *VaultDeltaMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *VaultDeltaMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *VaultDeltaMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *VaultDeltaMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *VaultDeltaMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown VaultDelta unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *VaultDeltaMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown VaultDelta edge %s", name)
+}
+
+// VaultLeaderCommissionMutation represents an operation that mutates the VaultLeaderCommission nodes in the graph.
+type VaultLeaderCommissionMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	user          *string
+	usdc          *string
+	time          *int64
+	addtime       *int64
+	address       *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*VaultLeaderCommission, error)
+	predicates    []predicate.VaultLeaderCommission
+}
+
+var _ ent.Mutation = (*VaultLeaderCommissionMutation)(nil)
+
+// vaultleadercommissionOption allows management of the mutation configuration using functional options.
+type vaultleadercommissionOption func(*VaultLeaderCommissionMutation)
+
+// newVaultLeaderCommissionMutation creates new mutation for the VaultLeaderCommission entity.
+func newVaultLeaderCommissionMutation(c config, op Op, opts ...vaultleadercommissionOption) *VaultLeaderCommissionMutation {
+	m := &VaultLeaderCommissionMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeVaultLeaderCommission,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withVaultLeaderCommissionID sets the ID field of the mutation.
+func withVaultLeaderCommissionID(id int) vaultleadercommissionOption {
+	return func(m *VaultLeaderCommissionMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *VaultLeaderCommission
+		)
+		m.oldValue = func(ctx context.Context) (*VaultLeaderCommission, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().VaultLeaderCommission.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withVaultLeaderCommission sets the old VaultLeaderCommission of the mutation.
+func withVaultLeaderCommission(node *VaultLeaderCommission) vaultleadercommissionOption {
+	return func(m *VaultLeaderCommissionMutation) {
+		m.oldValue = func(context.Context) (*VaultLeaderCommission, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m VaultLeaderCommissionMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m VaultLeaderCommissionMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *VaultLeaderCommissionMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *VaultLeaderCommissionMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().VaultLeaderCommission.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetUser sets the "user" field.
+func (m *VaultLeaderCommissionMutation) SetUser(s string) {
+	m.user = &s
+}
+
+// User returns the value of the "user" field in the mutation.
+func (m *VaultLeaderCommissionMutation) User() (r string, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUser returns the old "user" field's value of the VaultLeaderCommission entity.
+// If the VaultLeaderCommission object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultLeaderCommissionMutation) OldUser(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUser is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUser requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUser: %w", err)
+	}
+	return oldValue.User, nil
+}
+
+// ResetUser resets all changes to the "user" field.
+func (m *VaultLeaderCommissionMutation) ResetUser() {
+	m.user = nil
+}
+
+// SetUsdc sets the "usdc" field.
+func (m *VaultLeaderCommissionMutation) SetUsdc(s string) {
+	m.usdc = &s
+}
+
+// Usdc returns the value of the "usdc" field in the mutation.
+func (m *VaultLeaderCommissionMutation) Usdc() (r string, exists bool) {
+	v := m.usdc
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUsdc returns the old "usdc" field's value of the VaultLeaderCommission entity.
+// If the VaultLeaderCommission object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultLeaderCommissionMutation) OldUsdc(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUsdc is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUsdc requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUsdc: %w", err)
+	}
+	return oldValue.Usdc, nil
+}
+
+// ResetUsdc resets all changes to the "usdc" field.
+func (m *VaultLeaderCommissionMutation) ResetUsdc() {
+	m.usdc = nil
+}
+
+// SetTime sets the "time" field.
+func (m *VaultLeaderCommissionMutation) SetTime(i int64) {
+	m.time = &i
+	m.addtime = nil
+}
+
+// Time returns the value of the "time" field in the mutation.
+func (m *VaultLeaderCommissionMutation) Time() (r int64, exists bool) {
+	v := m.time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTime returns the old "time" field's value of the VaultLeaderCommission entity.
+// If the VaultLeaderCommission object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultLeaderCommissionMutation) OldTime(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTime: %w", err)
+	}
+	return oldValue.Time, nil
+}
+
+// AddTime adds i to the "time" field.
+func (m *VaultLeaderCommissionMutation) AddTime(i int64) {
+	if m.addtime != nil {
+		*m.addtime += i
+	} else {
+		m.addtime = &i
+	}
+}
+
+// AddedTime returns the value that was added to the "time" field in this mutation.
+func (m *VaultLeaderCommissionMutation) AddedTime() (r int64, exists bool) {
+	v := m.addtime
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTime resets all changes to the "time" field.
+func (m *VaultLeaderCommissionMutation) ResetTime() {
+	m.time = nil
+	m.addtime = nil
+}
+
+// SetAddress sets the "address" field.
+func (m *VaultLeaderCommissionMutation) SetAddress(s string) {
+	m.address = &s
+}
+
+// Address returns the value of the "address" field in the mutation.
+func (m *VaultLeaderCommissionMutation) Address() (r string, exists bool) {
+	v := m.address
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAddress returns the old "address" field's value of the VaultLeaderCommission entity.
+// If the VaultLeaderCommission object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultLeaderCommissionMutation) OldAddress(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAddress is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAddress requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAddress: %w", err)
+	}
+	return oldValue.Address, nil
+}
+
+// ResetAddress resets all changes to the "address" field.
+func (m *VaultLeaderCommissionMutation) ResetAddress() {
+	m.address = nil
+}
+
+// Where appends a list predicates to the VaultLeaderCommissionMutation builder.
+func (m *VaultLeaderCommissionMutation) Where(ps ...predicate.VaultLeaderCommission) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the VaultLeaderCommissionMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *VaultLeaderCommissionMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.VaultLeaderCommission, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *VaultLeaderCommissionMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *VaultLeaderCommissionMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (VaultLeaderCommission).
+func (m *VaultLeaderCommissionMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *VaultLeaderCommissionMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.user != nil {
+		fields = append(fields, vaultleadercommission.FieldUser)
+	}
+	if m.usdc != nil {
+		fields = append(fields, vaultleadercommission.FieldUsdc)
+	}
+	if m.time != nil {
+		fields = append(fields, vaultleadercommission.FieldTime)
+	}
+	if m.address != nil {
+		fields = append(fields, vaultleadercommission.FieldAddress)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *VaultLeaderCommissionMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case vaultleadercommission.FieldUser:
+		return m.User()
+	case vaultleadercommission.FieldUsdc:
+		return m.Usdc()
+	case vaultleadercommission.FieldTime:
+		return m.Time()
+	case vaultleadercommission.FieldAddress:
+		return m.Address()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *VaultLeaderCommissionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case vaultleadercommission.FieldUser:
+		return m.OldUser(ctx)
+	case vaultleadercommission.FieldUsdc:
+		return m.OldUsdc(ctx)
+	case vaultleadercommission.FieldTime:
+		return m.OldTime(ctx)
+	case vaultleadercommission.FieldAddress:
+		return m.OldAddress(ctx)
+	}
+	return nil, fmt.Errorf("unknown VaultLeaderCommission field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *VaultLeaderCommissionMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case vaultleadercommission.FieldUser:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUser(v)
+		return nil
+	case vaultleadercommission.FieldUsdc:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUsdc(v)
+		return nil
+	case vaultleadercommission.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTime(v)
+		return nil
+	case vaultleadercommission.FieldAddress:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAddress(v)
+		return nil
+	}
+	return fmt.Errorf("unknown VaultLeaderCommission field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *VaultLeaderCommissionMutation) AddedFields() []string {
+	var fields []string
+	if m.addtime != nil {
+		fields = append(fields, vaultleadercommission.FieldTime)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *VaultLeaderCommissionMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case vaultleadercommission.FieldTime:
+		return m.AddedTime()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *VaultLeaderCommissionMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case vaultleadercommission.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTime(v)
+		return nil
+	}
+	return fmt.Errorf("unknown VaultLeaderCommission numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *VaultLeaderCommissionMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *VaultLeaderCommissionMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *VaultLeaderCommissionMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown VaultLeaderCommission nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *VaultLeaderCommissionMutation) ResetField(name string) error {
+	switch name {
+	case vaultleadercommission.FieldUser:
+		m.ResetUser()
+		return nil
+	case vaultleadercommission.FieldUsdc:
+		m.ResetUsdc()
+		return nil
+	case vaultleadercommission.FieldTime:
+		m.ResetTime()
+		return nil
+	case vaultleadercommission.FieldAddress:
+		m.ResetAddress()
+		return nil
+	}
+	return fmt.Errorf("unknown VaultLeaderCommission field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *VaultLeaderCommissionMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *VaultLeaderCommissionMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *VaultLeaderCommissionMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *VaultLeaderCommissionMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *VaultLeaderCommissionMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *VaultLeaderCommissionMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *VaultLeaderCommissionMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown VaultLeaderCommission unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *VaultLeaderCommissionMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown VaultLeaderCommission edge %s", name)
+}
+
+// VaultWithdrawalMutation represents an operation that mutates the VaultWithdrawal nodes in the graph.
+type VaultWithdrawalMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *int
+	vault             *string
+	user              *string
+	requested_usd     *string
+	commission        *string
+	closing_cost      *string
+	basis             *string
+	net_withdrawn_usd *string
+	time              *int64
+	addtime           *int64
+	address           *string
+	clearedFields     map[string]struct{}
+	done              bool
+	oldValue          func(context.Context) (*VaultWithdrawal, error)
+	predicates        []predicate.VaultWithdrawal
+}
+
+var _ ent.Mutation = (*VaultWithdrawalMutation)(nil)
+
+// vaultwithdrawalOption allows management of the mutation configuration using functional options.
+type vaultwithdrawalOption func(*VaultWithdrawalMutation)
+
+// newVaultWithdrawalMutation creates new mutation for the VaultWithdrawal entity.
+func newVaultWithdrawalMutation(c config, op Op, opts ...vaultwithdrawalOption) *VaultWithdrawalMutation {
+	m := &VaultWithdrawalMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeVaultWithdrawal,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withVaultWithdrawalID sets the ID field of the mutation.
+func withVaultWithdrawalID(id int) vaultwithdrawalOption {
+	return func(m *VaultWithdrawalMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *VaultWithdrawal
+		)
+		m.oldValue = func(ctx context.Context) (*VaultWithdrawal, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().VaultWithdrawal.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withVaultWithdrawal sets the old VaultWithdrawal of the mutation.
+func withVaultWithdrawal(node *VaultWithdrawal) vaultwithdrawalOption {
+	return func(m *VaultWithdrawalMutation) {
+		m.oldValue = func(context.Context) (*VaultWithdrawal, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m VaultWithdrawalMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m VaultWithdrawalMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *VaultWithdrawalMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *VaultWithdrawalMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().VaultWithdrawal.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetVault sets the "vault" field.
+func (m *VaultWithdrawalMutation) SetVault(s string) {
+	m.vault = &s
+}
+
+// Vault returns the value of the "vault" field in the mutation.
+func (m *VaultWithdrawalMutation) Vault() (r string, exists bool) {
+	v := m.vault
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldVault returns the old "vault" field's value of the VaultWithdrawal entity.
+// If the VaultWithdrawal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultWithdrawalMutation) OldVault(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldVault is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldVault requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldVault: %w", err)
+	}
+	return oldValue.Vault, nil
+}
+
+// ResetVault resets all changes to the "vault" field.
+func (m *VaultWithdrawalMutation) ResetVault() {
+	m.vault = nil
+}
+
+// SetUser sets the "user" field.
+func (m *VaultWithdrawalMutation) SetUser(s string) {
+	m.user = &s
+}
+
+// User returns the value of the "user" field in the mutation.
+func (m *VaultWithdrawalMutation) User() (r string, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUser returns the old "user" field's value of the VaultWithdrawal entity.
+// If the VaultWithdrawal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultWithdrawalMutation) OldUser(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUser is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUser requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUser: %w", err)
+	}
+	return oldValue.User, nil
+}
+
+// ResetUser resets all changes to the "user" field.
+func (m *VaultWithdrawalMutation) ResetUser() {
+	m.user = nil
+}
+
+// SetRequestedUsd sets the "requested_usd" field.
+func (m *VaultWithdrawalMutation) SetRequestedUsd(s string) {
+	m.requested_usd = &s
+}
+
+// RequestedUsd returns the value of the "requested_usd" field in the mutation.
+func (m *VaultWithdrawalMutation) RequestedUsd() (r string, exists bool) {
+	v := m.requested_usd
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestedUsd returns the old "requested_usd" field's value of the VaultWithdrawal entity.
+// If the VaultWithdrawal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultWithdrawalMutation) OldRequestedUsd(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestedUsd is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestedUsd requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestedUsd: %w", err)
+	}
+	return oldValue.RequestedUsd, nil
+}
+
+// ResetRequestedUsd resets all changes to the "requested_usd" field.
+func (m *VaultWithdrawalMutation) ResetRequestedUsd() {
+	m.requested_usd = nil
+}
+
+// SetCommission sets the "commission" field.
+func (m *VaultWithdrawalMutation) SetCommission(s string) {
+	m.commission = &s
+}
+
+// Commission returns the value of the "commission" field in the mutation.
+func (m *VaultWithdrawalMutation) Commission() (r string, exists bool) {
+	v := m.commission
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCommission returns the old "commission" field's value of the VaultWithdrawal entity.
+// If the VaultWithdrawal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultWithdrawalMutation) OldCommission(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCommission is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCommission requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCommission: %w", err)
+	}
+	return oldValue.Commission, nil
+}
+
+// ResetCommission resets all changes to the "commission" field.
+func (m *VaultWithdrawalMutation) ResetCommission() {
+	m.commission = nil
+}
+
+// SetClosingCost sets the "closing_cost" field.
+func (m *VaultWithdrawalMutation) SetClosingCost(s string) {
+	m.closing_cost = &s
+}
+
+// ClosingCost returns the value of the "closing_cost" field in the mutation.
+func (m *VaultWithdrawalMutation) ClosingCost() (r string, exists bool) {
+	v := m.closing_cost
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldClosingCost returns the old "closing_cost" field's value of the VaultWithdrawal entity.
+// If the VaultWithdrawal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultWithdrawalMutation) OldClosingCost(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldClosingCost is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldClosingCost requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldClosingCost: %w", err)
+	}
+	return oldValue.ClosingCost, nil
+}
+
+// ResetClosingCost resets all changes to the "closing_cost" field.
+func (m *VaultWithdrawalMutation) ResetClosingCost() {
+	m.closing_cost = nil
+}
+
+// SetBasis sets the "basis" field.
+func (m *VaultWithdrawalMutation) SetBasis(s string) {
+	m.basis = &s
+}
+
+// Basis returns the value of the "basis" field in the mutation.
+func (m *VaultWithdrawalMutation) Basis() (r string, exists bool) {
+	v := m.basis
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBasis returns the old "basis" field's value of the VaultWithdrawal entity.
+// If the VaultWithdrawal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultWithdrawalMutation) OldBasis(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBasis is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBasis requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBasis: %w", err)
+	}
+	return oldValue.Basis, nil
+}
+
+// ResetBasis resets all changes to the "basis" field.
+func (m *VaultWithdrawalMutation) ResetBasis() {
+	m.basis = nil
+}
+
+// SetNetWithdrawnUsd sets the "net_withdrawn_usd" field.
+func (m *VaultWithdrawalMutation) SetNetWithdrawnUsd(s string) {
+	m.net_withdrawn_usd = &s
+}
+
+// NetWithdrawnUsd returns the value of the "net_withdrawn_usd" field in the mutation.
+func (m *VaultWithdrawalMutation) NetWithdrawnUsd() (r string, exists bool) {
+	v := m.net_withdrawn_usd
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNetWithdrawnUsd returns the old "net_withdrawn_usd" field's value of the VaultWithdrawal entity.
+// If the VaultWithdrawal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultWithdrawalMutation) OldNetWithdrawnUsd(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNetWithdrawnUsd is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNetWithdrawnUsd requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNetWithdrawnUsd: %w", err)
+	}
+	return oldValue.NetWithdrawnUsd, nil
+}
+
+// ResetNetWithdrawnUsd resets all changes to the "net_withdrawn_usd" field.
+func (m *VaultWithdrawalMutation) ResetNetWithdrawnUsd() {
+	m.net_withdrawn_usd = nil
+}
+
+// SetTime sets the "time" field.
+func (m *VaultWithdrawalMutation) SetTime(i int64) {
+	m.time = &i
+	m.addtime = nil
+}
+
+// Time returns the value of the "time" field in the mutation.
+func (m *VaultWithdrawalMutation) Time() (r int64, exists bool) {
+	v := m.time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTime returns the old "time" field's value of the VaultWithdrawal entity.
+// If the VaultWithdrawal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultWithdrawalMutation) OldTime(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTime: %w", err)
+	}
+	return oldValue.Time, nil
+}
+
+// AddTime adds i to the "time" field.
+func (m *VaultWithdrawalMutation) AddTime(i int64) {
+	if m.addtime != nil {
+		*m.addtime += i
+	} else {
+		m.addtime = &i
+	}
+}
+
+// AddedTime returns the value that was added to the "time" field in this mutation.
+func (m *VaultWithdrawalMutation) AddedTime() (r int64, exists bool) {
+	v := m.addtime
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTime resets all changes to the "time" field.
+func (m *VaultWithdrawalMutation) ResetTime() {
+	m.time = nil
+	m.addtime = nil
+}
+
+// SetAddress sets the "address" field.
+func (m *VaultWithdrawalMutation) SetAddress(s string) {
+	m.address = &s
+}
+
+// Address returns the value of the "address" field in the mutation.
+func (m *VaultWithdrawalMutation) Address() (r string, exists bool) {
+	v := m.address
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAddress returns the old "address" field's value of the VaultWithdrawal entity.
+// If the VaultWithdrawal object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *VaultWithdrawalMutation) OldAddress(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAddress is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAddress requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAddress: %w", err)
+	}
+	return oldValue.Address, nil
+}
+
+// ResetAddress resets all changes to the "address" field.
+func (m *VaultWithdrawalMutation) ResetAddress() {
+	m.address = nil
+}
+
+// Where appends a list predicates to the VaultWithdrawalMutation builder.
+func (m *VaultWithdrawalMutation) Where(ps ...predicate.VaultWithdrawal) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the VaultWithdrawalMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *VaultWithdrawalMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.VaultWithdrawal, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *VaultWithdrawalMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *VaultWithdrawalMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (VaultWithdrawal).
+func (m *VaultWithdrawalMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *VaultWithdrawalMutation) Fields() []string {
+	fields := make([]string, 0, 9)
+	if m.vault != nil {
+		fields = append(fields, vaultwithdrawal.FieldVault)
+	}
+	if m.user != nil {
+		fields = append(fields, vaultwithdrawal.FieldUser)
+	}
+	if m.requested_usd != nil {
+		fields = append(fields, vaultwithdrawal.FieldRequestedUsd)
+	}
+	if m.commission != nil {
+		fields = append(fields, vaultwithdrawal.FieldCommission)
+	}
+	if m.closing_cost != nil {
+		fields = append(fields, vaultwithdrawal.FieldClosingCost)
+	}
+	if m.basis != nil {
+		fields = append(fields, vaultwithdrawal.FieldBasis)
+	}
+	if m.net_withdrawn_usd != nil {
+		fields = append(fields, vaultwithdrawal.FieldNetWithdrawnUsd)
+	}
+	if m.time != nil {
+		fields = append(fields, vaultwithdrawal.FieldTime)
+	}
+	if m.address != nil {
+		fields = append(fields, vaultwithdrawal.FieldAddress)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *VaultWithdrawalMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case vaultwithdrawal.FieldVault:
+		return m.Vault()
+	case vaultwithdrawal.FieldUser:
+		return m.User()
+	case vaultwithdrawal.FieldRequestedUsd:
+		return m.RequestedUsd()
+	case vaultwithdrawal.FieldCommission:
+		return m.Commission()
+	case vaultwithdrawal.FieldClosingCost:
+		return m.ClosingCost()
+	case vaultwithdrawal.FieldBasis:
+		return m.Basis()
+	case vaultwithdrawal.FieldNetWithdrawnUsd:
+		return m.NetWithdrawnUsd()
+	case vaultwithdrawal.FieldTime:
+		return m.Time()
+	case vaultwithdrawal.FieldAddress:
+		return m.Address()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *VaultWithdrawalMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case vaultwithdrawal.FieldVault:
+		return m.OldVault(ctx)
+	case vaultwithdrawal.FieldUser:
+		return m.OldUser(ctx)
+	case vaultwithdrawal.FieldRequestedUsd:
+		return m.OldRequestedUsd(ctx)
+	case vaultwithdrawal.FieldCommission:
+		return m.OldCommission(ctx)
+	case vaultwithdrawal.FieldClosingCost:
+		return m.OldClosingCost(ctx)
+	case vaultwithdrawal.FieldBasis:
+		return m.OldBasis(ctx)
+	case vaultwithdrawal.FieldNetWithdrawnUsd:
+		return m.OldNetWithdrawnUsd(ctx)
+	case vaultwithdrawal.FieldTime:
+		return m.OldTime(ctx)
+	case vaultwithdrawal.FieldAddress:
+		return m.OldAddress(ctx)
+	}
+	return nil, fmt.Errorf("unknown VaultWithdrawal field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *VaultWithdrawalMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case vaultwithdrawal.FieldVault:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetVault(v)
+		return nil
+	case vaultwithdrawal.FieldUser:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUser(v)
+		return nil
+	case vaultwithdrawal.FieldRequestedUsd:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestedUsd(v)
+		return nil
+	case vaultwithdrawal.FieldCommission:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCommission(v)
+		return nil
+	case vaultwithdrawal.FieldClosingCost:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetClosingCost(v)
+		return nil
+	case vaultwithdrawal.FieldBasis:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBasis(v)
+		return nil
+	case vaultwithdrawal.FieldNetWithdrawnUsd:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNetWithdrawnUsd(v)
+		return nil
+	case vaultwithdrawal.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTime(v)
+		return nil
+	case vaultwithdrawal.FieldAddress:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAddress(v)
+		return nil
+	}
+	return fmt.Errorf("unknown VaultWithdrawal field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *VaultWithdrawalMutation) AddedFields() []string {
+	var fields []string
+	if m.addtime != nil {
+		fields = append(fields, vaultwithdrawal.FieldTime)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *VaultWithdrawalMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case vaultwithdrawal.FieldTime:
+		return m.AddedTime()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *VaultWithdrawalMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case vaultwithdrawal.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTime(v)
+		return nil
+	}
+	return fmt.Errorf("unknown VaultWithdrawal numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *VaultWithdrawalMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *VaultWithdrawalMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *VaultWithdrawalMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown VaultWithdrawal nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *VaultWithdrawalMutation) ResetField(name string) error {
+	switch name {
+	case vaultwithdrawal.FieldVault:
+		m.ResetVault()
+		return nil
+	case vaultwithdrawal.FieldUser:
+		m.ResetUser()
+		return nil
+	case vaultwithdrawal.FieldRequestedUsd:
+		m.ResetRequestedUsd()
+		return nil
+	case vaultwithdrawal.FieldCommission:
+		m.ResetCommission()
+		return nil
+	case vaultwithdrawal.FieldClosingCost:
+		m.ResetClosingCost()
+		return nil
+	case vaultwithdrawal.FieldBasis:
+		m.ResetBasis()
+		return nil
+	case vaultwithdrawal.FieldNetWithdrawnUsd:
+		m.ResetNetWithdrawnUsd()
+		return nil
+	case vaultwithdrawal.FieldTime:
+		m.ResetTime()
+		return nil
+	case vaultwithdrawal.FieldAddress:
+		m.ResetAddress()
+		return nil
+	}
+	return fmt.Errorf("unknown VaultWithdrawal field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *VaultWithdrawalMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *VaultWithdrawalMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *VaultWithdrawalMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *VaultWithdrawalMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *VaultWithdrawalMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *VaultWithdrawalMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *VaultWithdrawalMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown VaultWithdrawal unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *VaultWithdrawalMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown VaultWithdrawal edge %s", name)
 }

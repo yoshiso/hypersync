@@ -57,6 +57,42 @@ func (f SpotGenesisFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value,
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SpotGenesisMutation", m)
 }
 
+// The VaultDeltaFunc type is an adapter to allow the use of ordinary
+// function as VaultDelta mutator.
+type VaultDeltaFunc func(context.Context, *ent.VaultDeltaMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f VaultDeltaFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.VaultDeltaMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.VaultDeltaMutation", m)
+}
+
+// The VaultLeaderCommissionFunc type is an adapter to allow the use of ordinary
+// function as VaultLeaderCommission mutator.
+type VaultLeaderCommissionFunc func(context.Context, *ent.VaultLeaderCommissionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f VaultLeaderCommissionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.VaultLeaderCommissionMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.VaultLeaderCommissionMutation", m)
+}
+
+// The VaultWithdrawalFunc type is an adapter to allow the use of ordinary
+// function as VaultWithdrawal mutator.
+type VaultWithdrawalFunc func(context.Context, *ent.VaultWithdrawalMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f VaultWithdrawalFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.VaultWithdrawalMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.VaultWithdrawalMutation", m)
+}
+
 // Condition is a hook condition function.
 type Condition func(context.Context, ent.Mutation) bool
 

@@ -17,3 +17,12 @@ type RewardsClaim func(*sql.Selector)
 
 // SpotGenesis is the predicate function for spotgenesis builders.
 type SpotGenesis func(*sql.Selector)
+
+// VaultDelta is the predicate function for vaultdelta builders.
+type VaultDelta func(*sql.Selector)
+
+// VaultLeaderCommission is the predicate function for vaultleadercommission builders.
+type VaultLeaderCommission func(*sql.Selector)
+
+// VaultWithdrawal is the predicate function for vaultwithdrawal builders.
+type VaultWithdrawal func(*sql.Selector)

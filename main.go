@@ -358,6 +358,7 @@ func run(userAddress string, verbose bool, output_file string) {
 				SetDir(fill.Dir).
 				SetHash(fill.Hash).
 				SetCrossed(fill.Crossed).
+				SetClosedPnl(fill.ClosedPnl).
 				SetFee(fill.Fee).
 				SetTid(fill.Tid).
 				SetOid(fill.Oid).
@@ -571,6 +572,7 @@ func run(userAddress string, verbose bool, output_file string) {
 							SetSide(fill.Side).
 							SetTime(fill.Time).
 							SetStartPosition(fill.StartPosition).
+							SetClosedPnl(fill.ClosedPnl).
 							SetDir(fill.Dir).
 							SetHash(fill.Hash).
 							SetCrossed(fill.Crossed).

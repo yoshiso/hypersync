@@ -25,6 +25,8 @@ const (
 	FieldTime = "time"
 	// FieldStartPosition holds the string denoting the start_position field in the database.
 	FieldStartPosition = "start_position"
+	// FieldClosedPnl holds the string denoting the closed_pnl field in the database.
+	FieldClosedPnl = "closed_pnl"
 	// FieldDir holds the string denoting the dir field in the database.
 	FieldDir = "dir"
 	// FieldHash holds the string denoting the hash field in the database.
@@ -55,6 +57,7 @@ var Columns = []string{
 	FieldSide,
 	FieldTime,
 	FieldStartPosition,
+	FieldClosedPnl,
 	FieldDir,
 	FieldHash,
 	FieldCrossed,
@@ -116,6 +119,11 @@ func ByTime(opts ...sql.OrderTermOption) OrderOption {
 // ByStartPosition orders the results by the start_position field.
 func ByStartPosition(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStartPosition, opts...).ToFunc()
+}
+
+// ByClosedPnl orders the results by the closed_pnl field.
+func ByClosedPnl(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldClosedPnl, opts...).ToFunc()
 }
 
 // ByDir orders the results by the dir field.

@@ -63,6 +63,12 @@ func (fc *FillCreate) SetStartPosition(s string) *FillCreate {
 	return fc
 }
 
+// SetClosedPnl sets the "closed_pnl" field.
+func (fc *FillCreate) SetClosedPnl(s string) *FillCreate {
+	fc.mutation.SetClosedPnl(s)
+	return fc
+}
+
 // SetDir sets the "dir" field.
 func (fc *FillCreate) SetDir(s string) *FillCreate {
 	fc.mutation.SetDir(s)
@@ -174,6 +180,9 @@ func (fc *FillCreate) check() error {
 	if _, ok := fc.mutation.StartPosition(); !ok {
 		return &ValidationError{Name: "start_position", err: errors.New(`ent: missing required field "Fill.start_position"`)}
 	}
+	if _, ok := fc.mutation.ClosedPnl(); !ok {
+		return &ValidationError{Name: "closed_pnl", err: errors.New(`ent: missing required field "Fill.closed_pnl"`)}
+	}
 	if _, ok := fc.mutation.Dir(); !ok {
 		return &ValidationError{Name: "dir", err: errors.New(`ent: missing required field "Fill.dir"`)}
 	}
@@ -249,6 +258,10 @@ func (fc *FillCreate) createSpec() (*Fill, *sqlgraph.CreateSpec) {
 	if value, ok := fc.mutation.StartPosition(); ok {
 		_spec.SetField(fill.FieldStartPosition, field.TypeString, value)
 		_node.StartPosition = value
+	}
+	if value, ok := fc.mutation.ClosedPnl(); ok {
+		_spec.SetField(fill.FieldClosedPnl, field.TypeString, value)
+		_node.ClosedPnl = value
 	}
 	if value, ok := fc.mutation.Dir(); ok {
 		_spec.SetField(fill.FieldDir, field.TypeString, value)
@@ -421,6 +434,18 @@ func (u *FillUpsert) SetStartPosition(v string) *FillUpsert {
 // UpdateStartPosition sets the "start_position" field to the value that was provided on create.
 func (u *FillUpsert) UpdateStartPosition() *FillUpsert {
 	u.SetExcluded(fill.FieldStartPosition)
+	return u
+}
+
+// SetClosedPnl sets the "closed_pnl" field.
+func (u *FillUpsert) SetClosedPnl(v string) *FillUpsert {
+	u.Set(fill.FieldClosedPnl, v)
+	return u
+}
+
+// UpdateClosedPnl sets the "closed_pnl" field to the value that was provided on create.
+func (u *FillUpsert) UpdateClosedPnl() *FillUpsert {
+	u.SetExcluded(fill.FieldClosedPnl)
 	return u
 }
 
@@ -680,6 +705,20 @@ func (u *FillUpsertOne) SetStartPosition(v string) *FillUpsertOne {
 func (u *FillUpsertOne) UpdateStartPosition() *FillUpsertOne {
 	return u.Update(func(s *FillUpsert) {
 		s.UpdateStartPosition()
+	})
+}
+
+// SetClosedPnl sets the "closed_pnl" field.
+func (u *FillUpsertOne) SetClosedPnl(v string) *FillUpsertOne {
+	return u.Update(func(s *FillUpsert) {
+		s.SetClosedPnl(v)
+	})
+}
+
+// UpdateClosedPnl sets the "closed_pnl" field to the value that was provided on create.
+func (u *FillUpsertOne) UpdateClosedPnl() *FillUpsertOne {
+	return u.Update(func(s *FillUpsert) {
+		s.UpdateClosedPnl()
 	})
 }
 
@@ -1121,6 +1160,20 @@ func (u *FillUpsertBulk) SetStartPosition(v string) *FillUpsertBulk {
 func (u *FillUpsertBulk) UpdateStartPosition() *FillUpsertBulk {
 	return u.Update(func(s *FillUpsert) {
 		s.UpdateStartPosition()
+	})
+}
+
+// SetClosedPnl sets the "closed_pnl" field.
+func (u *FillUpsertBulk) SetClosedPnl(v string) *FillUpsertBulk {
+	return u.Update(func(s *FillUpsert) {
+		s.SetClosedPnl(v)
+	})
+}
+
+// UpdateClosedPnl sets the "closed_pnl" field to the value that was provided on create.
+func (u *FillUpsertBulk) UpdateClosedPnl() *FillUpsertBulk {
+	return u.Update(func(s *FillUpsert) {
+		s.UpdateClosedPnl()
 	})
 }
 

@@ -30,6 +30,8 @@ type Fill struct {
 	Time int64 `json:"time,omitempty"`
 	// StartPosition holds the value of the "start_position" field.
 	StartPosition string `json:"start_position,omitempty"`
+	// ClosedPnl holds the value of the "closed_pnl" field.
+	ClosedPnl string `json:"closed_pnl,omitempty"`
 	// Dir holds the value of the "dir" field.
 	Dir string `json:"dir,omitempty"`
 	// Hash holds the value of the "hash" field.
@@ -58,7 +60,7 @@ func (*Fill) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case fill.FieldID, fill.FieldTime, fill.FieldOid, fill.FieldTid:
 			values[i] = new(sql.NullInt64)
-		case fill.FieldCoin, fill.FieldAddress, fill.FieldPx, fill.FieldSz, fill.FieldSide, fill.FieldStartPosition, fill.FieldDir, fill.FieldHash, fill.FieldFee, fill.FieldFeeToken, fill.FieldBuilderFee:
+		case fill.FieldCoin, fill.FieldAddress, fill.FieldPx, fill.FieldSz, fill.FieldSide, fill.FieldStartPosition, fill.FieldClosedPnl, fill.FieldDir, fill.FieldHash, fill.FieldFee, fill.FieldFeeToken, fill.FieldBuilderFee:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -122,6 +124,12 @@ func (f *Fill) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field start_position", values[i])
 			} else if value.Valid {
 				f.StartPosition = value.String
+			}
+		case fill.FieldClosedPnl:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field closed_pnl", values[i])
+			} else if value.Valid {
+				f.ClosedPnl = value.String
 			}
 		case fill.FieldDir:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -227,6 +235,9 @@ func (f *Fill) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("start_position=")
 	builder.WriteString(f.StartPosition)
+	builder.WriteString(", ")
+	builder.WriteString("closed_pnl=")
+	builder.WriteString(f.ClosedPnl)
 	builder.WriteString(", ")
 	builder.WriteString("dir=")
 	builder.WriteString(f.Dir)

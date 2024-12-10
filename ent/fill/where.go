@@ -87,6 +87,11 @@ func StartPosition(v string) predicate.Fill {
 	return predicate.Fill(sql.FieldEQ(FieldStartPosition, v))
 }
 
+// ClosedPnl applies equality check predicate on the "closed_pnl" field. It's identical to ClosedPnlEQ.
+func ClosedPnl(v string) predicate.Fill {
+	return predicate.Fill(sql.FieldEQ(FieldClosedPnl, v))
+}
+
 // Dir applies equality check predicate on the "dir" field. It's identical to DirEQ.
 func Dir(v string) predicate.Fill {
 	return predicate.Fill(sql.FieldEQ(FieldDir, v))
@@ -555,6 +560,71 @@ func StartPositionEqualFold(v string) predicate.Fill {
 // StartPositionContainsFold applies the ContainsFold predicate on the "start_position" field.
 func StartPositionContainsFold(v string) predicate.Fill {
 	return predicate.Fill(sql.FieldContainsFold(FieldStartPosition, v))
+}
+
+// ClosedPnlEQ applies the EQ predicate on the "closed_pnl" field.
+func ClosedPnlEQ(v string) predicate.Fill {
+	return predicate.Fill(sql.FieldEQ(FieldClosedPnl, v))
+}
+
+// ClosedPnlNEQ applies the NEQ predicate on the "closed_pnl" field.
+func ClosedPnlNEQ(v string) predicate.Fill {
+	return predicate.Fill(sql.FieldNEQ(FieldClosedPnl, v))
+}
+
+// ClosedPnlIn applies the In predicate on the "closed_pnl" field.
+func ClosedPnlIn(vs ...string) predicate.Fill {
+	return predicate.Fill(sql.FieldIn(FieldClosedPnl, vs...))
+}
+
+// ClosedPnlNotIn applies the NotIn predicate on the "closed_pnl" field.
+func ClosedPnlNotIn(vs ...string) predicate.Fill {
+	return predicate.Fill(sql.FieldNotIn(FieldClosedPnl, vs...))
+}
+
+// ClosedPnlGT applies the GT predicate on the "closed_pnl" field.
+func ClosedPnlGT(v string) predicate.Fill {
+	return predicate.Fill(sql.FieldGT(FieldClosedPnl, v))
+}
+
+// ClosedPnlGTE applies the GTE predicate on the "closed_pnl" field.
+func ClosedPnlGTE(v string) predicate.Fill {
+	return predicate.Fill(sql.FieldGTE(FieldClosedPnl, v))
+}
+
+// ClosedPnlLT applies the LT predicate on the "closed_pnl" field.
+func ClosedPnlLT(v string) predicate.Fill {
+	return predicate.Fill(sql.FieldLT(FieldClosedPnl, v))
+}
+
+// ClosedPnlLTE applies the LTE predicate on the "closed_pnl" field.
+func ClosedPnlLTE(v string) predicate.Fill {
+	return predicate.Fill(sql.FieldLTE(FieldClosedPnl, v))
+}
+
+// ClosedPnlContains applies the Contains predicate on the "closed_pnl" field.
+func ClosedPnlContains(v string) predicate.Fill {
+	return predicate.Fill(sql.FieldContains(FieldClosedPnl, v))
+}
+
+// ClosedPnlHasPrefix applies the HasPrefix predicate on the "closed_pnl" field.
+func ClosedPnlHasPrefix(v string) predicate.Fill {
+	return predicate.Fill(sql.FieldHasPrefix(FieldClosedPnl, v))
+}
+
+// ClosedPnlHasSuffix applies the HasSuffix predicate on the "closed_pnl" field.
+func ClosedPnlHasSuffix(v string) predicate.Fill {
+	return predicate.Fill(sql.FieldHasSuffix(FieldClosedPnl, v))
+}
+
+// ClosedPnlEqualFold applies the EqualFold predicate on the "closed_pnl" field.
+func ClosedPnlEqualFold(v string) predicate.Fill {
+	return predicate.Fill(sql.FieldEqualFold(FieldClosedPnl, v))
+}
+
+// ClosedPnlContainsFold applies the ContainsFold predicate on the "closed_pnl" field.
+func ClosedPnlContainsFold(v string) predicate.Fill {
+	return predicate.Fill(sql.FieldContainsFold(FieldClosedPnl, v))
 }
 
 // DirEQ applies the EQ predicate on the "dir" field.

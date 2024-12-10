@@ -132,6 +132,20 @@ func (fu *FillUpdate) SetNillableStartPosition(s *string) *FillUpdate {
 	return fu
 }
 
+// SetClosedPnl sets the "closed_pnl" field.
+func (fu *FillUpdate) SetClosedPnl(s string) *FillUpdate {
+	fu.mutation.SetClosedPnl(s)
+	return fu
+}
+
+// SetNillableClosedPnl sets the "closed_pnl" field if the given value is not nil.
+func (fu *FillUpdate) SetNillableClosedPnl(s *string) *FillUpdate {
+	if s != nil {
+		fu.SetClosedPnl(*s)
+	}
+	return fu
+}
+
 // SetDir sets the "dir" field.
 func (fu *FillUpdate) SetDir(s string) *FillUpdate {
 	fu.mutation.SetDir(s)
@@ -329,6 +343,9 @@ func (fu *FillUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := fu.mutation.StartPosition(); ok {
 		_spec.SetField(fill.FieldStartPosition, field.TypeString, value)
 	}
+	if value, ok := fu.mutation.ClosedPnl(); ok {
+		_spec.SetField(fill.FieldClosedPnl, field.TypeString, value)
+	}
 	if value, ok := fu.mutation.Dir(); ok {
 		_spec.SetField(fill.FieldDir, field.TypeString, value)
 	}
@@ -483,6 +500,20 @@ func (fuo *FillUpdateOne) SetStartPosition(s string) *FillUpdateOne {
 func (fuo *FillUpdateOne) SetNillableStartPosition(s *string) *FillUpdateOne {
 	if s != nil {
 		fuo.SetStartPosition(*s)
+	}
+	return fuo
+}
+
+// SetClosedPnl sets the "closed_pnl" field.
+func (fuo *FillUpdateOne) SetClosedPnl(s string) *FillUpdateOne {
+	fuo.mutation.SetClosedPnl(s)
+	return fuo
+}
+
+// SetNillableClosedPnl sets the "closed_pnl" field if the given value is not nil.
+func (fuo *FillUpdateOne) SetNillableClosedPnl(s *string) *FillUpdateOne {
+	if s != nil {
+		fuo.SetClosedPnl(*s)
 	}
 	return fuo
 }
@@ -713,6 +744,9 @@ func (fuo *FillUpdateOne) sqlSave(ctx context.Context) (_node *Fill, err error) 
 	}
 	if value, ok := fuo.mutation.StartPosition(); ok {
 		_spec.SetField(fill.FieldStartPosition, field.TypeString, value)
+	}
+	if value, ok := fuo.mutation.ClosedPnl(); ok {
+		_spec.SetField(fill.FieldClosedPnl, field.TypeString, value)
 	}
 	if value, ok := fuo.mutation.Dir(); ok {
 		_spec.SetField(fill.FieldDir, field.TypeString, value)

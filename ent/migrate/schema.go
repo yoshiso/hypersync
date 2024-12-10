@@ -18,6 +18,7 @@ var (
 		{Name: "side", Type: field.TypeString},
 		{Name: "time", Type: field.TypeInt64},
 		{Name: "start_position", Type: field.TypeString},
+		{Name: "closed_pnl", Type: field.TypeString},
 		{Name: "dir", Type: field.TypeString},
 		{Name: "hash", Type: field.TypeString},
 		{Name: "crossed", Type: field.TypeBool},

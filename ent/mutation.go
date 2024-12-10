@@ -58,6 +58,7 @@ type FillMutation struct {
 	time           *int64
 	addtime        *int64
 	start_position *string
+	closed_pnl     *string
 	dir            *string
 	hash           *string
 	crossed        *bool
@@ -444,6 +445,42 @@ func (m *FillMutation) ResetStartPosition() {
 	m.start_position = nil
 }
 
+// SetClosedPnl sets the "closed_pnl" field.
+func (m *FillMutation) SetClosedPnl(s string) {
+	m.closed_pnl = &s
+}
+
+// ClosedPnl returns the value of the "closed_pnl" field in the mutation.
+func (m *FillMutation) ClosedPnl() (r string, exists bool) {
+	v := m.closed_pnl
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldClosedPnl returns the old "closed_pnl" field's value of the Fill entity.
+// If the Fill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FillMutation) OldClosedPnl(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldClosedPnl is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldClosedPnl requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldClosedPnl: %w", err)
+	}
+	return oldValue.ClosedPnl, nil
+}
+
+// ResetClosedPnl resets all changes to the "closed_pnl" field.
+func (m *FillMutation) ResetClosedPnl() {
+	m.closed_pnl = nil
+}
+
 // SetDir sets the "dir" field.
 func (m *FillMutation) SetDir(s string) {
 	m.dir = &s
@@ -819,7 +856,7 @@ func (m *FillMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *FillMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 16)
 	if m.coin != nil {
 		fields = append(fields, fill.FieldCoin)
 	}
@@ -840,6 +877,9 @@ func (m *FillMutation) Fields() []string {
 	}
 	if m.start_position != nil {
 		fields = append(fields, fill.FieldStartPosition)
+	}
+	if m.closed_pnl != nil {
+		fields = append(fields, fill.FieldClosedPnl)
 	}
 	if m.dir != nil {
 		fields = append(fields, fill.FieldDir)
@@ -887,6 +927,8 @@ func (m *FillMutation) Field(name string) (ent.Value, bool) {
 		return m.Time()
 	case fill.FieldStartPosition:
 		return m.StartPosition()
+	case fill.FieldClosedPnl:
+		return m.ClosedPnl()
 	case fill.FieldDir:
 		return m.Dir()
 	case fill.FieldHash:
@@ -926,6 +968,8 @@ func (m *FillMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldTime(ctx)
 	case fill.FieldStartPosition:
 		return m.OldStartPosition(ctx)
+	case fill.FieldClosedPnl:
+		return m.OldClosedPnl(ctx)
 	case fill.FieldDir:
 		return m.OldDir(ctx)
 	case fill.FieldHash:
@@ -999,6 +1043,13 @@ func (m *FillMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStartPosition(v)
+		return nil
+	case fill.FieldClosedPnl:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetClosedPnl(v)
 		return nil
 	case fill.FieldDir:
 		v, ok := value.(string)
@@ -1173,6 +1224,9 @@ func (m *FillMutation) ResetField(name string) error {
 		return nil
 	case fill.FieldStartPosition:
 		m.ResetStartPosition()
+		return nil
+	case fill.FieldClosedPnl:
+		m.ResetClosedPnl()
 		return nil
 	case fill.FieldDir:
 		m.ResetDir()

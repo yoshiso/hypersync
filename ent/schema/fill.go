@@ -20,6 +20,7 @@ func (Fill) Fields() []ent.Field {
         field.String("side"),
         field.Int64("time"),
         field.String("start_position"),
+        field.String("closed_pnl"),
         field.String("dir"),
         field.String("hash"),
         field.Bool("crossed"),

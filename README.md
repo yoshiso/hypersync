@@ -43,5 +43,25 @@ hypersync --address $wallet_address --verbose
 Run syncer with output path
 
 ```
-hypersync --address $wallet_address --out path/to/database.sqlite3
+hypersync --address $wallet_address \
+          --out path/to/database.sqlite3
+```
+
+Run syncer with local backup
+
+```
+hypersync --address $wallet_address \
+          --out path/to/db.sqlite3 \
+          --backup file://path/to/backup.sqlite3 \
+          --backup-interval-seconds 86400
+```
+
+Run syncer with AWS S3 backup (Requires AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in environment variable or ~/.aws/config file)
+
+```
+hypersync --address $wallet_address \
+          --out path/to/db.sqlite3 \
+          --backup s3://s3bucket_name/path/to/backup.sqlite3 \
+          --backup-interval-seconds 86400 \
+          --aws-s3-region ap-northeast-1
 ```

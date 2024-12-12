@@ -5,12 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gorilla/websocket"
 	"github.com/urfave/cli/v3"
 	"github.com/yoshiso/hypersync/ent"
@@ -115,7 +120,7 @@ type WSUserNonFundingLedgerUpdateDelta struct {
 	NetWithdrawnUsd string `json:"netWithdrawnUsd"`
 	Destination     string `json:"destination"`
 	Fee             string `json:"fee"`
-	Nonce           int64 `json:"nonce"`
+	Nonce           int64  `json:"nonce"`
 }
 
 type WSUserNonFundingLedgerUpdates struct {
@@ -275,6 +280,97 @@ func fetchUserNonFundingLedgerUpdates(userAddress string) ([]WSUserNonFundingLed
 	return updates, nil
 }
 
+func uploadToS3(filePath string, bucket string, key string, awsRegion string) error {
+	imageFile, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer imageFile.Close()
+
+	newSession := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+
+	svc := s3.New(newSession, &aws.Config{
+		Region: aws.String(awsRegion),
+	})
+
+	params := &s3.PutObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+		Body:   imageFile,
+	}
+
+	_, err = svc.PutObject(params)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func runBackup(db_path string, backupPath string, awsS3Region string) {
+
+	if backupPath == "" {
+		return
+	}
+
+	if backupPath[:5] == "s3://" {
+
+		s3FullPath := backupPath[5:]
+
+		paths := strings.SplitN(s3FullPath, "/", 2)
+
+		if len(paths) != 2 {
+			fmt.Println(fmt.Sprintf("Invalid backup path format: ", backupPath))
+			return
+		}
+
+		if err := uploadToS3(db_path, paths[0], paths[1], awsS3Region); err != nil {
+			fmt.Println(fmt.Sprintf("Failed to upload to S3: ", err))
+		}
+
+		fmt.Println(fmt.Sprintf("[Backup] Successfully bacaked up to %s", backupPath))
+
+		return
+	}
+
+	if backupPath[:7] == "file://" {
+
+		filePath := backupPath[7:]
+
+		copyFileContents(db_path, filePath)
+
+		fmt.Println(fmt.Sprintf("[Backup] Successfully bacaked up to %s", backupPath))
+
+		return
+	}
+	fmt.Println("Unknown backupPath = %s", backupPath)
+}
+
+func copyFileContents(src, dst string) (err error) {
+	in, err := os.Open(src)
+	if err != nil {
+		return
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return
+	}
+	defer func() {
+		cerr := out.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
+	if _, err = io.Copy(out, in); err != nil {
+		return
+	}
+	err = out.Sync()
+	return
+}
+
 func main() {
 	cmd := &cli.Command{
 		Flags: []cli.Flag{
@@ -293,6 +389,21 @@ func main() {
 				Value: "db.sqlite3",
 				Usage: "database file output destination",
 			},
+			&cli.StringFlag{
+				Name:  "backup",
+				Value: "",
+				Usage: "backup file output destination",
+			},
+			&cli.IntFlag{
+				Name:  "backup-interval-seconds",
+				Value: 60 * 60 * 8,
+				Usage: "seconds interval to run backup",
+			},
+			&cli.StringFlag{
+				Name:  "aws-s3-region",
+				Value: "ap-northeast-1",
+				Usage: "aws s3 region used to store backup file",
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 
@@ -305,9 +416,15 @@ func main() {
 
 			verbose := cmd.Bool("verbose")
 
-			output_file := cmd.String("out")
+			outputFile := cmd.String("out")
 
-			run(userAddress, verbose, output_file)
+			backup := cmd.String("backup")
+
+			awsS3Region := cmd.String("aws-s3-region")
+
+			backupIntervalSeconds := cmd.Int("backup-interval-seconds")
+
+			run(userAddress, verbose, outputFile, backup, awsS3Region, backupIntervalSeconds)
 
 			return nil
 		},
@@ -318,11 +435,11 @@ func main() {
 	}
 }
 
-func run(userAddress string, verbose bool, output_file string) {
+func run(userAddress string, verbose bool, outputFile string, backupFile string, awsS3Region string, backupIntervalSeconds int64) {
 
-	fmt.Println("start running server", userAddress, output_file)
+	fmt.Println("start running server", userAddress, outputFile)
 
-	client, err := ent.Open("sqlite3", "file:"+output_file+"?cache=shared&_fk=1")
+	client, err := ent.Open("sqlite3", "file:"+outputFile+"?cache=shared&_fk=1")
 	if err != nil {
 		log.Fatalf("failed opening connection to sqlite: %v", err)
 	}
@@ -333,6 +450,8 @@ func run(userAddress string, verbose bool, output_file string) {
 		log.Fatalf("failed creating schema resources: %v", err)
 	}
 
+	ticker := time.NewTicker(time.Second * time.Duration(backupIntervalSeconds))
+
 	for {
 		msgC := Conn(userAddress)
 
@@ -342,8 +461,8 @@ func run(userAddress string, verbose bool, output_file string) {
 		initFills, err := fetchUserFills(userAddress)
 
 		if err != nil {
-			fmt.Println("failed to load fills via API, and retrying... (%v)", err)
-			time.Sleep(time.Second * 5)
+			fmt.Println(fmt.Sprintf("failed to load fills via API, and retrying... (%v)"))
+			time.Sleep(time.Second * 10)
 			continue
 		}
 
@@ -384,8 +503,8 @@ func run(userAddress string, verbose bool, output_file string) {
 		fmt.Println("Loading fundings via REST API")
 		initFundings, err := fetchUserFundings(userAddress)
 		if err != nil {
-			fmt.Println("failed to load fundings via API, and retrying... (%v)", err)
-			time.Sleep(time.Second * 5)
+			fmt.Println(fmt.Sprintf("failed to load fundings via API, and retrying... (%v)", err))
+			time.Sleep(time.Second * 10)
 			continue
 		}
 
@@ -413,8 +532,8 @@ func run(userAddress string, verbose bool, output_file string) {
 		fmt.Println("Loading UserNonFundingLedgerUpdates via REST API")
 		initUpdates, err := fetchUserNonFundingLedgerUpdates(userAddress)
 		if err != nil {
-			fmt.Println("failed to load UserNonFundingLedgerUpdates via API, and retrying... (%v)", err)
-			time.Sleep(time.Second * 5)
+			fmt.Println(fmt.Sprintf("failed to load UserNonFundingLedgerUpdates via API, and retrying... (%v)", err))
+			time.Sleep(time.Second * 10)
 			continue
 		}
 
@@ -545,6 +664,8 @@ func run(userAddress string, verbose bool, output_file string) {
 
 		for {
 			select {
+			case <-ticker.C:
+				runBackup(outputFile, backupFile, awsS3Region)
 			case msg, ok := <-msgC:
 				if !ok {
 					fmt.Println("websocket connection disconnected and restarting...")

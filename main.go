@@ -651,7 +651,7 @@ func run(userAddress string, verbose bool, outputFile string, backupFile string,
 				wip.OnConflict().UpdateNewValues().IDX(ctx)
 				if verbose {
 					fmt.Println(fmt.Sprintf(
-						"[Withdraw] User: %s, Usdc:%s, Fee: %s, Time: %v",
+						"[Withdraw] Usdc:%s, Fee: %s, Time: %v",
 						update.Delta.User, update.Delta.Usdc, update.Delta.Fee, update.Time,
 					))
 				}

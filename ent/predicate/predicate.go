@@ -6,6 +6,12 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// Delegate is the predicate function for delegate builders.
+type Delegate func(*sql.Selector)
+
+// DelegatorReward is the predicate function for delegatorreward builders.
+type DelegatorReward func(*sql.Selector)
+
 // Fill is the predicate function for fill builders.
 type Fill func(*sql.Selector)
 

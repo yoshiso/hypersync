@@ -9,6 +9,30 @@ import (
 	"github.com/yoshiso/hypersync/ent"
 )
 
+// The DelegateFunc type is an adapter to allow the use of ordinary
+// function as Delegate mutator.
+type DelegateFunc func(context.Context, *ent.DelegateMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DelegateFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DelegateMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DelegateMutation", m)
+}
+
+// The DelegatorRewardFunc type is an adapter to allow the use of ordinary
+// function as DelegatorReward mutator.
+type DelegatorRewardFunc func(context.Context, *ent.DelegatorRewardMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DelegatorRewardFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DelegatorRewardMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DelegatorRewardMutation", m)
+}
+
 // The FillFunc type is an adapter to allow the use of ordinary
 // function as Fill mutator.
 type FillFunc func(context.Context, *ent.FillMutation) (ent.Value, error)

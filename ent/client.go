@@ -14,6 +14,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"github.com/yoshiso/hypersync/ent/delegate"
+	"github.com/yoshiso/hypersync/ent/delegatorreward"
 	"github.com/yoshiso/hypersync/ent/fill"
 	"github.com/yoshiso/hypersync/ent/funding"
 	"github.com/yoshiso/hypersync/ent/internaltransfer"
@@ -31,6 +33,10 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// Delegate is the client for interacting with the Delegate builders.
+	Delegate *DelegateClient
+	// DelegatorReward is the client for interacting with the DelegatorReward builders.
+	DelegatorReward *DelegatorRewardClient
 	// Fill is the client for interacting with the Fill builders.
 	Fill *FillClient
 	// Funding is the client for interacting with the Funding builders.
@@ -62,6 +68,8 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.Delegate = NewDelegateClient(c.config)
+	c.DelegatorReward = NewDelegatorRewardClient(c.config)
 	c.Fill = NewFillClient(c.config)
 	c.Funding = NewFundingClient(c.config)
 	c.InternalTransfer = NewInternalTransferClient(c.config)
@@ -164,6 +172,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	return &Tx{
 		ctx:                   ctx,
 		config:                cfg,
+		Delegate:              NewDelegateClient(cfg),
+		DelegatorReward:       NewDelegatorRewardClient(cfg),
 		Fill:                  NewFillClient(cfg),
 		Funding:               NewFundingClient(cfg),
 		InternalTransfer:      NewInternalTransferClient(cfg),
@@ -193,6 +203,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	return &Tx{
 		ctx:                   ctx,
 		config:                cfg,
+		Delegate:              NewDelegateClient(cfg),
+		DelegatorReward:       NewDelegatorRewardClient(cfg),
 		Fill:                  NewFillClient(cfg),
 		Funding:               NewFundingClient(cfg),
 		InternalTransfer:      NewInternalTransferClient(cfg),
@@ -209,7 +221,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		Fill.
+//		Delegate.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -232,9 +244,9 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Fill, c.Funding, c.InternalTransfer, c.RewardsClaim, c.SpotGenesis,
-		c.SpotTransfer, c.VaultDelta, c.VaultLeaderCommission, c.VaultWithdrawal,
-		c.Withdraw,
+		c.Delegate, c.DelegatorReward, c.Fill, c.Funding, c.InternalTransfer,
+		c.RewardsClaim, c.SpotGenesis, c.SpotTransfer, c.VaultDelta,
+		c.VaultLeaderCommission, c.VaultWithdrawal, c.Withdraw,
 	} {
 		n.Use(hooks...)
 	}
@@ -244,9 +256,9 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Fill, c.Funding, c.InternalTransfer, c.RewardsClaim, c.SpotGenesis,
-		c.SpotTransfer, c.VaultDelta, c.VaultLeaderCommission, c.VaultWithdrawal,
-		c.Withdraw,
+		c.Delegate, c.DelegatorReward, c.Fill, c.Funding, c.InternalTransfer,
+		c.RewardsClaim, c.SpotGenesis, c.SpotTransfer, c.VaultDelta,
+		c.VaultLeaderCommission, c.VaultWithdrawal, c.Withdraw,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -255,6 +267,10 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
+	case *DelegateMutation:
+		return c.Delegate.mutate(ctx, m)
+	case *DelegatorRewardMutation:
+		return c.DelegatorReward.mutate(ctx, m)
 	case *FillMutation:
 		return c.Fill.mutate(ctx, m)
 	case *FundingMutation:
@@ -277,6 +293,272 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Withdraw.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
+// DelegateClient is a client for the Delegate schema.
+type DelegateClient struct {
+	config
+}
+
+// NewDelegateClient returns a client for the Delegate from the given config.
+func NewDelegateClient(c config) *DelegateClient {
+	return &DelegateClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `delegate.Hooks(f(g(h())))`.
+func (c *DelegateClient) Use(hooks ...Hook) {
+	c.hooks.Delegate = append(c.hooks.Delegate, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `delegate.Intercept(f(g(h())))`.
+func (c *DelegateClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Delegate = append(c.inters.Delegate, interceptors...)
+}
+
+// Create returns a builder for creating a Delegate entity.
+func (c *DelegateClient) Create() *DelegateCreate {
+	mutation := newDelegateMutation(c.config, OpCreate)
+	return &DelegateCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Delegate entities.
+func (c *DelegateClient) CreateBulk(builders ...*DelegateCreate) *DelegateCreateBulk {
+	return &DelegateCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DelegateClient) MapCreateBulk(slice any, setFunc func(*DelegateCreate, int)) *DelegateCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DelegateCreateBulk{err: fmt.Errorf("calling to DelegateClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DelegateCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DelegateCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Delegate.
+func (c *DelegateClient) Update() *DelegateUpdate {
+	mutation := newDelegateMutation(c.config, OpUpdate)
+	return &DelegateUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DelegateClient) UpdateOne(d *Delegate) *DelegateUpdateOne {
+	mutation := newDelegateMutation(c.config, OpUpdateOne, withDelegate(d))
+	return &DelegateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DelegateClient) UpdateOneID(id int) *DelegateUpdateOne {
+	mutation := newDelegateMutation(c.config, OpUpdateOne, withDelegateID(id))
+	return &DelegateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Delegate.
+func (c *DelegateClient) Delete() *DelegateDelete {
+	mutation := newDelegateMutation(c.config, OpDelete)
+	return &DelegateDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DelegateClient) DeleteOne(d *Delegate) *DelegateDeleteOne {
+	return c.DeleteOneID(d.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DelegateClient) DeleteOneID(id int) *DelegateDeleteOne {
+	builder := c.Delete().Where(delegate.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DelegateDeleteOne{builder}
+}
+
+// Query returns a query builder for Delegate.
+func (c *DelegateClient) Query() *DelegateQuery {
+	return &DelegateQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDelegate},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Delegate entity by its id.
+func (c *DelegateClient) Get(ctx context.Context, id int) (*Delegate, error) {
+	return c.Query().Where(delegate.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DelegateClient) GetX(ctx context.Context, id int) *Delegate {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *DelegateClient) Hooks() []Hook {
+	return c.hooks.Delegate
+}
+
+// Interceptors returns the client interceptors.
+func (c *DelegateClient) Interceptors() []Interceptor {
+	return c.inters.Delegate
+}
+
+func (c *DelegateClient) mutate(ctx context.Context, m *DelegateMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DelegateCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DelegateUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DelegateUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DelegateDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Delegate mutation op: %q", m.Op())
+	}
+}
+
+// DelegatorRewardClient is a client for the DelegatorReward schema.
+type DelegatorRewardClient struct {
+	config
+}
+
+// NewDelegatorRewardClient returns a client for the DelegatorReward from the given config.
+func NewDelegatorRewardClient(c config) *DelegatorRewardClient {
+	return &DelegatorRewardClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `delegatorreward.Hooks(f(g(h())))`.
+func (c *DelegatorRewardClient) Use(hooks ...Hook) {
+	c.hooks.DelegatorReward = append(c.hooks.DelegatorReward, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `delegatorreward.Intercept(f(g(h())))`.
+func (c *DelegatorRewardClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DelegatorReward = append(c.inters.DelegatorReward, interceptors...)
+}
+
+// Create returns a builder for creating a DelegatorReward entity.
+func (c *DelegatorRewardClient) Create() *DelegatorRewardCreate {
+	mutation := newDelegatorRewardMutation(c.config, OpCreate)
+	return &DelegatorRewardCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DelegatorReward entities.
+func (c *DelegatorRewardClient) CreateBulk(builders ...*DelegatorRewardCreate) *DelegatorRewardCreateBulk {
+	return &DelegatorRewardCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DelegatorRewardClient) MapCreateBulk(slice any, setFunc func(*DelegatorRewardCreate, int)) *DelegatorRewardCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DelegatorRewardCreateBulk{err: fmt.Errorf("calling to DelegatorRewardClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DelegatorRewardCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DelegatorRewardCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DelegatorReward.
+func (c *DelegatorRewardClient) Update() *DelegatorRewardUpdate {
+	mutation := newDelegatorRewardMutation(c.config, OpUpdate)
+	return &DelegatorRewardUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DelegatorRewardClient) UpdateOne(dr *DelegatorReward) *DelegatorRewardUpdateOne {
+	mutation := newDelegatorRewardMutation(c.config, OpUpdateOne, withDelegatorReward(dr))
+	return &DelegatorRewardUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DelegatorRewardClient) UpdateOneID(id int) *DelegatorRewardUpdateOne {
+	mutation := newDelegatorRewardMutation(c.config, OpUpdateOne, withDelegatorRewardID(id))
+	return &DelegatorRewardUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DelegatorReward.
+func (c *DelegatorRewardClient) Delete() *DelegatorRewardDelete {
+	mutation := newDelegatorRewardMutation(c.config, OpDelete)
+	return &DelegatorRewardDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DelegatorRewardClient) DeleteOne(dr *DelegatorReward) *DelegatorRewardDeleteOne {
+	return c.DeleteOneID(dr.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DelegatorRewardClient) DeleteOneID(id int) *DelegatorRewardDeleteOne {
+	builder := c.Delete().Where(delegatorreward.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DelegatorRewardDeleteOne{builder}
+}
+
+// Query returns a query builder for DelegatorReward.
+func (c *DelegatorRewardClient) Query() *DelegatorRewardQuery {
+	return &DelegatorRewardQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDelegatorReward},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DelegatorReward entity by its id.
+func (c *DelegatorRewardClient) Get(ctx context.Context, id int) (*DelegatorReward, error) {
+	return c.Query().Where(delegatorreward.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DelegatorRewardClient) GetX(ctx context.Context, id int) *DelegatorReward {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *DelegatorRewardClient) Hooks() []Hook {
+	return c.hooks.DelegatorReward
+}
+
+// Interceptors returns the client interceptors.
+func (c *DelegatorRewardClient) Interceptors() []Interceptor {
+	return c.inters.DelegatorReward
+}
+
+func (c *DelegatorRewardClient) mutate(ctx context.Context, m *DelegatorRewardMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DelegatorRewardCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DelegatorRewardUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DelegatorRewardUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DelegatorRewardDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DelegatorReward mutation op: %q", m.Op())
 	}
 }
 
@@ -1613,11 +1895,13 @@ func (c *WithdrawClient) mutate(ctx context.Context, m *WithdrawMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Fill, Funding, InternalTransfer, RewardsClaim, SpotGenesis, SpotTransfer,
-		VaultDelta, VaultLeaderCommission, VaultWithdrawal, Withdraw []ent.Hook
+		Delegate, DelegatorReward, Fill, Funding, InternalTransfer, RewardsClaim,
+		SpotGenesis, SpotTransfer, VaultDelta, VaultLeaderCommission, VaultWithdrawal,
+		Withdraw []ent.Hook
 	}
 	inters struct {
-		Fill, Funding, InternalTransfer, RewardsClaim, SpotGenesis, SpotTransfer,
-		VaultDelta, VaultLeaderCommission, VaultWithdrawal, Withdraw []ent.Interceptor
+		Delegate, DelegatorReward, Fill, Funding, InternalTransfer, RewardsClaim,
+		SpotGenesis, SpotTransfer, VaultDelta, VaultLeaderCommission, VaultWithdrawal,
+		Withdraw []ent.Interceptor
 	}
 )

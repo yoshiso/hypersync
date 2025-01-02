@@ -10,6 +10,8 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/yoshiso/hypersync/ent/delegate"
+	"github.com/yoshiso/hypersync/ent/delegatorreward"
 	"github.com/yoshiso/hypersync/ent/fill"
 	"github.com/yoshiso/hypersync/ent/funding"
 	"github.com/yoshiso/hypersync/ent/internaltransfer"
@@ -32,6 +34,8 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
+	TypeDelegate              = "Delegate"
+	TypeDelegatorReward       = "DelegatorReward"
 	TypeFill                  = "Fill"
 	TypeFunding               = "Funding"
 	TypeInternalTransfer      = "InternalTransfer"
@@ -43,6 +47,1108 @@ const (
 	TypeVaultWithdrawal       = "VaultWithdrawal"
 	TypeWithdraw              = "Withdraw"
 )
+
+// DelegateMutation represents an operation that mutates the Delegate nodes in the graph.
+type DelegateMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	validator     *string
+	amount        *string
+	is_undelegate *bool
+	time          *int64
+	addtime       *int64
+	address       *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*Delegate, error)
+	predicates    []predicate.Delegate
+}
+
+var _ ent.Mutation = (*DelegateMutation)(nil)
+
+// delegateOption allows management of the mutation configuration using functional options.
+type delegateOption func(*DelegateMutation)
+
+// newDelegateMutation creates new mutation for the Delegate entity.
+func newDelegateMutation(c config, op Op, opts ...delegateOption) *DelegateMutation {
+	m := &DelegateMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDelegate,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDelegateID sets the ID field of the mutation.
+func withDelegateID(id int) delegateOption {
+	return func(m *DelegateMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Delegate
+		)
+		m.oldValue = func(ctx context.Context) (*Delegate, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Delegate.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDelegate sets the old Delegate of the mutation.
+func withDelegate(node *Delegate) delegateOption {
+	return func(m *DelegateMutation) {
+		m.oldValue = func(context.Context) (*Delegate, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DelegateMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DelegateMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DelegateMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DelegateMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Delegate.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetValidator sets the "validator" field.
+func (m *DelegateMutation) SetValidator(s string) {
+	m.validator = &s
+}
+
+// Validator returns the value of the "validator" field in the mutation.
+func (m *DelegateMutation) Validator() (r string, exists bool) {
+	v := m.validator
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldValidator returns the old "validator" field's value of the Delegate entity.
+// If the Delegate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DelegateMutation) OldValidator(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldValidator is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldValidator requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldValidator: %w", err)
+	}
+	return oldValue.Validator, nil
+}
+
+// ResetValidator resets all changes to the "validator" field.
+func (m *DelegateMutation) ResetValidator() {
+	m.validator = nil
+}
+
+// SetAmount sets the "amount" field.
+func (m *DelegateMutation) SetAmount(s string) {
+	m.amount = &s
+}
+
+// Amount returns the value of the "amount" field in the mutation.
+func (m *DelegateMutation) Amount() (r string, exists bool) {
+	v := m.amount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAmount returns the old "amount" field's value of the Delegate entity.
+// If the Delegate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DelegateMutation) OldAmount(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAmount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAmount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAmount: %w", err)
+	}
+	return oldValue.Amount, nil
+}
+
+// ResetAmount resets all changes to the "amount" field.
+func (m *DelegateMutation) ResetAmount() {
+	m.amount = nil
+}
+
+// SetIsUndelegate sets the "is_undelegate" field.
+func (m *DelegateMutation) SetIsUndelegate(b bool) {
+	m.is_undelegate = &b
+}
+
+// IsUndelegate returns the value of the "is_undelegate" field in the mutation.
+func (m *DelegateMutation) IsUndelegate() (r bool, exists bool) {
+	v := m.is_undelegate
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsUndelegate returns the old "is_undelegate" field's value of the Delegate entity.
+// If the Delegate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DelegateMutation) OldIsUndelegate(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsUndelegate is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsUndelegate requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsUndelegate: %w", err)
+	}
+	return oldValue.IsUndelegate, nil
+}
+
+// ResetIsUndelegate resets all changes to the "is_undelegate" field.
+func (m *DelegateMutation) ResetIsUndelegate() {
+	m.is_undelegate = nil
+}
+
+// SetTime sets the "time" field.
+func (m *DelegateMutation) SetTime(i int64) {
+	m.time = &i
+	m.addtime = nil
+}
+
+// Time returns the value of the "time" field in the mutation.
+func (m *DelegateMutation) Time() (r int64, exists bool) {
+	v := m.time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTime returns the old "time" field's value of the Delegate entity.
+// If the Delegate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DelegateMutation) OldTime(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTime: %w", err)
+	}
+	return oldValue.Time, nil
+}
+
+// AddTime adds i to the "time" field.
+func (m *DelegateMutation) AddTime(i int64) {
+	if m.addtime != nil {
+		*m.addtime += i
+	} else {
+		m.addtime = &i
+	}
+}
+
+// AddedTime returns the value that was added to the "time" field in this mutation.
+func (m *DelegateMutation) AddedTime() (r int64, exists bool) {
+	v := m.addtime
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTime resets all changes to the "time" field.
+func (m *DelegateMutation) ResetTime() {
+	m.time = nil
+	m.addtime = nil
+}
+
+// SetAddress sets the "address" field.
+func (m *DelegateMutation) SetAddress(s string) {
+	m.address = &s
+}
+
+// Address returns the value of the "address" field in the mutation.
+func (m *DelegateMutation) Address() (r string, exists bool) {
+	v := m.address
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAddress returns the old "address" field's value of the Delegate entity.
+// If the Delegate object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DelegateMutation) OldAddress(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAddress is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAddress requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAddress: %w", err)
+	}
+	return oldValue.Address, nil
+}
+
+// ResetAddress resets all changes to the "address" field.
+func (m *DelegateMutation) ResetAddress() {
+	m.address = nil
+}
+
+// Where appends a list predicates to the DelegateMutation builder.
+func (m *DelegateMutation) Where(ps ...predicate.Delegate) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DelegateMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DelegateMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Delegate, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DelegateMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DelegateMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Delegate).
+func (m *DelegateMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DelegateMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.validator != nil {
+		fields = append(fields, delegate.FieldValidator)
+	}
+	if m.amount != nil {
+		fields = append(fields, delegate.FieldAmount)
+	}
+	if m.is_undelegate != nil {
+		fields = append(fields, delegate.FieldIsUndelegate)
+	}
+	if m.time != nil {
+		fields = append(fields, delegate.FieldTime)
+	}
+	if m.address != nil {
+		fields = append(fields, delegate.FieldAddress)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DelegateMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case delegate.FieldValidator:
+		return m.Validator()
+	case delegate.FieldAmount:
+		return m.Amount()
+	case delegate.FieldIsUndelegate:
+		return m.IsUndelegate()
+	case delegate.FieldTime:
+		return m.Time()
+	case delegate.FieldAddress:
+		return m.Address()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DelegateMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case delegate.FieldValidator:
+		return m.OldValidator(ctx)
+	case delegate.FieldAmount:
+		return m.OldAmount(ctx)
+	case delegate.FieldIsUndelegate:
+		return m.OldIsUndelegate(ctx)
+	case delegate.FieldTime:
+		return m.OldTime(ctx)
+	case delegate.FieldAddress:
+		return m.OldAddress(ctx)
+	}
+	return nil, fmt.Errorf("unknown Delegate field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DelegateMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case delegate.FieldValidator:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetValidator(v)
+		return nil
+	case delegate.FieldAmount:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAmount(v)
+		return nil
+	case delegate.FieldIsUndelegate:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsUndelegate(v)
+		return nil
+	case delegate.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTime(v)
+		return nil
+	case delegate.FieldAddress:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAddress(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Delegate field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DelegateMutation) AddedFields() []string {
+	var fields []string
+	if m.addtime != nil {
+		fields = append(fields, delegate.FieldTime)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DelegateMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case delegate.FieldTime:
+		return m.AddedTime()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DelegateMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case delegate.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTime(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Delegate numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DelegateMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DelegateMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DelegateMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Delegate nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DelegateMutation) ResetField(name string) error {
+	switch name {
+	case delegate.FieldValidator:
+		m.ResetValidator()
+		return nil
+	case delegate.FieldAmount:
+		m.ResetAmount()
+		return nil
+	case delegate.FieldIsUndelegate:
+		m.ResetIsUndelegate()
+		return nil
+	case delegate.FieldTime:
+		m.ResetTime()
+		return nil
+	case delegate.FieldAddress:
+		m.ResetAddress()
+		return nil
+	}
+	return fmt.Errorf("unknown Delegate field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DelegateMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DelegateMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DelegateMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DelegateMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DelegateMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DelegateMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DelegateMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown Delegate unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DelegateMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown Delegate edge %s", name)
+}
+
+// DelegatorRewardMutation represents an operation that mutates the DelegatorReward nodes in the graph.
+type DelegatorRewardMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	source        *string
+	total_amount  *string
+	time          *int64
+	addtime       *int64
+	address       *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*DelegatorReward, error)
+	predicates    []predicate.DelegatorReward
+}
+
+var _ ent.Mutation = (*DelegatorRewardMutation)(nil)
+
+// delegatorrewardOption allows management of the mutation configuration using functional options.
+type delegatorrewardOption func(*DelegatorRewardMutation)
+
+// newDelegatorRewardMutation creates new mutation for the DelegatorReward entity.
+func newDelegatorRewardMutation(c config, op Op, opts ...delegatorrewardOption) *DelegatorRewardMutation {
+	m := &DelegatorRewardMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDelegatorReward,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDelegatorRewardID sets the ID field of the mutation.
+func withDelegatorRewardID(id int) delegatorrewardOption {
+	return func(m *DelegatorRewardMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *DelegatorReward
+		)
+		m.oldValue = func(ctx context.Context) (*DelegatorReward, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().DelegatorReward.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDelegatorReward sets the old DelegatorReward of the mutation.
+func withDelegatorReward(node *DelegatorReward) delegatorrewardOption {
+	return func(m *DelegatorRewardMutation) {
+		m.oldValue = func(context.Context) (*DelegatorReward, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DelegatorRewardMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DelegatorRewardMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DelegatorRewardMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DelegatorRewardMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().DelegatorReward.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetSource sets the "source" field.
+func (m *DelegatorRewardMutation) SetSource(s string) {
+	m.source = &s
+}
+
+// Source returns the value of the "source" field in the mutation.
+func (m *DelegatorRewardMutation) Source() (r string, exists bool) {
+	v := m.source
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSource returns the old "source" field's value of the DelegatorReward entity.
+// If the DelegatorReward object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DelegatorRewardMutation) OldSource(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSource is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSource requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSource: %w", err)
+	}
+	return oldValue.Source, nil
+}
+
+// ResetSource resets all changes to the "source" field.
+func (m *DelegatorRewardMutation) ResetSource() {
+	m.source = nil
+}
+
+// SetTotalAmount sets the "total_amount" field.
+func (m *DelegatorRewardMutation) SetTotalAmount(s string) {
+	m.total_amount = &s
+}
+
+// TotalAmount returns the value of the "total_amount" field in the mutation.
+func (m *DelegatorRewardMutation) TotalAmount() (r string, exists bool) {
+	v := m.total_amount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalAmount returns the old "total_amount" field's value of the DelegatorReward entity.
+// If the DelegatorReward object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DelegatorRewardMutation) OldTotalAmount(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalAmount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalAmount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalAmount: %w", err)
+	}
+	return oldValue.TotalAmount, nil
+}
+
+// ResetTotalAmount resets all changes to the "total_amount" field.
+func (m *DelegatorRewardMutation) ResetTotalAmount() {
+	m.total_amount = nil
+}
+
+// SetTime sets the "time" field.
+func (m *DelegatorRewardMutation) SetTime(i int64) {
+	m.time = &i
+	m.addtime = nil
+}
+
+// Time returns the value of the "time" field in the mutation.
+func (m *DelegatorRewardMutation) Time() (r int64, exists bool) {
+	v := m.time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTime returns the old "time" field's value of the DelegatorReward entity.
+// If the DelegatorReward object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DelegatorRewardMutation) OldTime(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTime: %w", err)
+	}
+	return oldValue.Time, nil
+}
+
+// AddTime adds i to the "time" field.
+func (m *DelegatorRewardMutation) AddTime(i int64) {
+	if m.addtime != nil {
+		*m.addtime += i
+	} else {
+		m.addtime = &i
+	}
+}
+
+// AddedTime returns the value that was added to the "time" field in this mutation.
+func (m *DelegatorRewardMutation) AddedTime() (r int64, exists bool) {
+	v := m.addtime
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTime resets all changes to the "time" field.
+func (m *DelegatorRewardMutation) ResetTime() {
+	m.time = nil
+	m.addtime = nil
+}
+
+// SetAddress sets the "address" field.
+func (m *DelegatorRewardMutation) SetAddress(s string) {
+	m.address = &s
+}
+
+// Address returns the value of the "address" field in the mutation.
+func (m *DelegatorRewardMutation) Address() (r string, exists bool) {
+	v := m.address
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAddress returns the old "address" field's value of the DelegatorReward entity.
+// If the DelegatorReward object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DelegatorRewardMutation) OldAddress(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAddress is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAddress requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAddress: %w", err)
+	}
+	return oldValue.Address, nil
+}
+
+// ResetAddress resets all changes to the "address" field.
+func (m *DelegatorRewardMutation) ResetAddress() {
+	m.address = nil
+}
+
+// Where appends a list predicates to the DelegatorRewardMutation builder.
+func (m *DelegatorRewardMutation) Where(ps ...predicate.DelegatorReward) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DelegatorRewardMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DelegatorRewardMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.DelegatorReward, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DelegatorRewardMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DelegatorRewardMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (DelegatorReward).
+func (m *DelegatorRewardMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DelegatorRewardMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.source != nil {
+		fields = append(fields, delegatorreward.FieldSource)
+	}
+	if m.total_amount != nil {
+		fields = append(fields, delegatorreward.FieldTotalAmount)
+	}
+	if m.time != nil {
+		fields = append(fields, delegatorreward.FieldTime)
+	}
+	if m.address != nil {
+		fields = append(fields, delegatorreward.FieldAddress)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DelegatorRewardMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case delegatorreward.FieldSource:
+		return m.Source()
+	case delegatorreward.FieldTotalAmount:
+		return m.TotalAmount()
+	case delegatorreward.FieldTime:
+		return m.Time()
+	case delegatorreward.FieldAddress:
+		return m.Address()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DelegatorRewardMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case delegatorreward.FieldSource:
+		return m.OldSource(ctx)
+	case delegatorreward.FieldTotalAmount:
+		return m.OldTotalAmount(ctx)
+	case delegatorreward.FieldTime:
+		return m.OldTime(ctx)
+	case delegatorreward.FieldAddress:
+		return m.OldAddress(ctx)
+	}
+	return nil, fmt.Errorf("unknown DelegatorReward field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DelegatorRewardMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case delegatorreward.FieldSource:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSource(v)
+		return nil
+	case delegatorreward.FieldTotalAmount:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalAmount(v)
+		return nil
+	case delegatorreward.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTime(v)
+		return nil
+	case delegatorreward.FieldAddress:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAddress(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DelegatorReward field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DelegatorRewardMutation) AddedFields() []string {
+	var fields []string
+	if m.addtime != nil {
+		fields = append(fields, delegatorreward.FieldTime)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DelegatorRewardMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case delegatorreward.FieldTime:
+		return m.AddedTime()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DelegatorRewardMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case delegatorreward.FieldTime:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTime(v)
+		return nil
+	}
+	return fmt.Errorf("unknown DelegatorReward numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DelegatorRewardMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DelegatorRewardMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DelegatorRewardMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown DelegatorReward nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DelegatorRewardMutation) ResetField(name string) error {
+	switch name {
+	case delegatorreward.FieldSource:
+		m.ResetSource()
+		return nil
+	case delegatorreward.FieldTotalAmount:
+		m.ResetTotalAmount()
+		return nil
+	case delegatorreward.FieldTime:
+		m.ResetTime()
+		return nil
+	case delegatorreward.FieldAddress:
+		m.ResetAddress()
+		return nil
+	}
+	return fmt.Errorf("unknown DelegatorReward field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DelegatorRewardMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DelegatorRewardMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DelegatorRewardMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DelegatorRewardMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DelegatorRewardMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DelegatorRewardMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DelegatorRewardMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown DelegatorReward unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DelegatorRewardMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown DelegatorReward edge %s", name)
+}
 
 // FillMutation represents an operation that mutates the Fill nodes in the graph.
 type FillMutation struct {

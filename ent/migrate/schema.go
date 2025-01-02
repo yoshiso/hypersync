@@ -8,6 +8,49 @@ import (
 )
 
 var (
+	// DelegatesColumns holds the columns for the "delegates" table.
+	DelegatesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "validator", Type: field.TypeString},
+		{Name: "amount", Type: field.TypeString},
+		{Name: "is_undelegate", Type: field.TypeBool},
+		{Name: "time", Type: field.TypeInt64},
+		{Name: "address", Type: field.TypeString},
+	}
+	// DelegatesTable holds the schema information for the "delegates" table.
+	DelegatesTable = &schema.Table{
+		Name:       "delegates",
+		Columns:    DelegatesColumns,
+		PrimaryKey: []*schema.Column{DelegatesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "delegate_address_time_validator",
+				Unique:  true,
+				Columns: []*schema.Column{DelegatesColumns[5], DelegatesColumns[4], DelegatesColumns[1]},
+			},
+		},
+	}
+	// DelegatorRewardsColumns holds the columns for the "delegator_rewards" table.
+	DelegatorRewardsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "source", Type: field.TypeString},
+		{Name: "total_amount", Type: field.TypeString},
+		{Name: "time", Type: field.TypeInt64},
+		{Name: "address", Type: field.TypeString},
+	}
+	// DelegatorRewardsTable holds the schema information for the "delegator_rewards" table.
+	DelegatorRewardsTable = &schema.Table{
+		Name:       "delegator_rewards",
+		Columns:    DelegatorRewardsColumns,
+		PrimaryKey: []*schema.Column{DelegatorRewardsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "delegatorreward_address_time_source",
+				Unique:  true,
+				Columns: []*schema.Column{DelegatorRewardsColumns[4], DelegatorRewardsColumns[3], DelegatorRewardsColumns[1]},
+			},
+		},
+	}
 	// FillsColumns holds the columns for the "fills" table.
 	FillsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -238,6 +281,8 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		DelegatesTable,
+		DelegatorRewardsTable,
 		FillsTable,
 		FundingsTable,
 		InternalTransfersTable,

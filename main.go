@@ -134,6 +134,28 @@ type WSUserNonFundingLedgerUpdatesResponse struct {
 	Data    WSUserNonFundingLedgerUpdates `json:"data"`
 }
 
+type DelegatorHistoryDelta struct {
+	Delegate *DelegatorHistoryDelegateDelta `json:"delegate"`
+}
+
+type DelegatorHistoryDelegateDelta struct {
+	Validator    string `json:"validator"`
+	Amount       string `json:"amount"`
+	IsUndelegate bool   `json:"isUndelegate"`
+}
+
+type DelegatorHisotry struct {
+	Time  int64                 `json:"time"`
+	Hash  string                `json:"hash"`
+	Delta DelegatorHistoryDelta `json:"delta"`
+}
+
+type DelegatorReward struct {
+	Time        int64  `json:"time"`
+	Source      string `json:"source"`
+	TotalAmount string `json:"totalAmount"`
+}
+
 type Msg struct {
 	Channel string `json:"channel"`
 }
@@ -274,6 +296,46 @@ func fetchUserNonFundingLedgerUpdates(userAddress string) ([]WSUserNonFundingLed
 	body, err := ioutil.ReadAll(res.Body)
 
 	updates := []WSUserNonFundingLedgerUpdate{}
+
+	json.Unmarshal(body, &updates)
+
+	return updates, nil
+}
+
+func fetchDelegatorHistory(userAddress string) ([]DelegatorHisotry, error) {
+	jsonBody, _ := json.Marshal(HTTPUserRequest{User: userAddress, Type: "delegatorHistory"})
+
+	res, err := http.Post("https://api.hyperliquid.xyz/info", "application/json", bytes.NewBuffer(jsonBody))
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+
+	updates := []DelegatorHisotry{}
+
+	json.Unmarshal(body, &updates)
+
+	return updates, nil
+}
+
+func fetchDelegatorRewards(userAddress string) ([]DelegatorReward, error) {
+	jsonBody, _ := json.Marshal(HTTPUserRequest{User: userAddress, Type: "delegatorRewards"})
+
+	res, err := http.Post("https://api.hyperliquid.xyz/info", "application/json", bytes.NewBuffer(jsonBody))
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+
+	updates := []DelegatorReward{}
 
 	json.Unmarshal(body, &updates)
 
@@ -435,6 +497,71 @@ func main() {
 	}
 }
 
+func runFetchAndStoreDelegatorHistory(userAddress string, client *ent.Client, ctx context.Context, verbose bool) error {
+	fmt.Println("Loading delegatorHisotry via REST API")
+	initDelegates, err := fetchDelegatorHistory(userAddress)
+
+	if err != nil {
+		fmt.Println(fmt.Sprintf("failed to load delegatorHistory via API, and retrying... (%v)"))
+		return err
+	}
+
+	for _, item := range initDelegates {
+		if item.Delta.Delegate != nil {
+			delegate := client.Delegate.Create().
+				SetAddress(userAddress).
+				SetTime(item.Time).
+				SetAmount(item.Delta.Delegate.Amount).
+				SetValidator(item.Delta.Delegate.Validator).
+				SetIsUndelegate(item.Delta.Delegate.IsUndelegate)
+
+			delegate.OnConflict().UpdateNewValues().IDX(ctx)
+
+			if verbose {
+				fmt.Println(fmt.Sprintf(
+					"[Delegate] Validator: %s, Amount: %s, IsUndelegate: %v",
+					item.Delta.Delegate.Validator, item.Delta.Delegate.Amount, item.Delta.Delegate.IsUndelegate,
+				))
+			}
+		}
+	}
+
+	fmt.Println("Complete delegatorHisotry via REST API")
+
+	return nil
+}
+
+func runFetchAndStoreDelegatorReward(userAddress string, client *ent.Client, ctx context.Context, verbose bool) error {
+	fmt.Println("Loading delegatorReward via REST API")
+	initRewards, err := fetchDelegatorRewards(userAddress)
+
+	if err != nil {
+		fmt.Println(fmt.Sprintf("failed to load delegatorReward via API, and retrying... (%v)"))
+		return err
+	}
+
+	for _, item := range initRewards {
+		reward := client.DelegatorReward.Create().
+			SetAddress(userAddress).
+			SetTime(item.Time).
+			SetTotalAmount(item.TotalAmount).
+			SetSource(item.Source)
+
+		reward.OnConflict().UpdateNewValues().IDX(ctx)
+
+		if verbose {
+			fmt.Println(fmt.Sprintf(
+				"[Delegate] Source: %s, TotalAmount: %s",
+				item.Source, item.TotalAmount,
+			))
+		}
+	}
+
+	fmt.Println("Complete delegatorReward via REST API")
+
+	return nil
+}
+
 func run(userAddress string, verbose bool, outputFile string, backupFile string, awsS3Region string, backupIntervalSeconds int64) {
 
 	fmt.Println("start running server", userAddress, outputFile)
@@ -452,10 +579,22 @@ func run(userAddress string, verbose bool, outputFile string, backupFile string,
 
 	ticker := time.NewTicker(time.Second * time.Duration(backupIntervalSeconds))
 
+	periodicSyncTicker := time.NewTicker(time.Second * time.Duration(60*60*4))
+
 	for {
 		msgC := Conn(userAddress)
 
 		ctx := context.TODO()
+
+		if err := runFetchAndStoreDelegatorHistory(userAddress, client, ctx, verbose); err != nil {
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		if err := runFetchAndStoreDelegatorReward(userAddress, client, ctx, verbose); err != nil {
+			time.Sleep(time.Second * 10)
+			continue
+		}
 
 		fmt.Println("Loading fills via REST API")
 		initFills, err := fetchUserFills(userAddress)
@@ -666,6 +805,12 @@ func run(userAddress string, verbose bool, outputFile string, backupFile string,
 			select {
 			case <-ticker.C:
 				runBackup(outputFile, backupFile, awsS3Region)
+			case <-periodicSyncTicker.C:
+
+				// ignore error and hope it will be handled at next iter.
+				runFetchAndStoreDelegatorHistory(userAddress, client, ctx, verbose)
+				runFetchAndStoreDelegatorReward(userAddress, client, ctx, verbose)
+
 			case msg, ok := <-msgC:
 				if !ok {
 					fmt.Println("websocket connection disconnected and restarting...")

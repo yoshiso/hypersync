@@ -12,6 +12,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/yoshiso/hypersync/ent/delegate"
+	"github.com/yoshiso/hypersync/ent/delegatorreward"
 	"github.com/yoshiso/hypersync/ent/fill"
 	"github.com/yoshiso/hypersync/ent/funding"
 	"github.com/yoshiso/hypersync/ent/internaltransfer"
@@ -82,6 +84,8 @@ var (
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
+			delegate.Table:              delegate.ValidColumn,
+			delegatorreward.Table:       delegatorreward.ValidColumn,
 			fill.Table:                  fill.ValidColumn,
 			funding.Table:               funding.ValidColumn,
 			internaltransfer.Table:      internaltransfer.ValidColumn,

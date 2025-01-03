@@ -551,7 +551,7 @@ func runFetchAndStoreDelegatorReward(userAddress string, client *ent.Client, ctx
 
 		if verbose {
 			fmt.Println(fmt.Sprintf(
-				"[Delegate] Source: %s, TotalAmount: %s",
+				"[DelegatorReward] Source: %s, TotalAmount: %s",
 				item.Source, item.TotalAmount,
 			))
 		}

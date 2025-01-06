@@ -8,7 +8,7 @@ Sync your hyperliquid fills with local database to avoid losing your transaction
 - Start syncing fill via websocket realtime
 - All your fills will be stored into local database, currenly only sqlite3 is supported.
 - By default, db file is created on ./db.sqlite3
-- Also support fundings, genesisSpot, rewardsClaim, vault deposit/withdraw/create, withdraw, spot/internal transfers also required to calculate PnLs.
+- Also support fundings, genesisSpot, rewardsClaim, vault deposit/withdraw/create, withdraw, spot/internal transfers, staking/unstaking, staking rewards, twap fill.
 
 ## Misc
 

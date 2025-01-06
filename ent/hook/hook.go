@@ -105,6 +105,18 @@ func (f SpotTransferFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SpotTransferMutation", m)
 }
 
+// The TwapSliceFillFunc type is an adapter to allow the use of ordinary
+// function as TwapSliceFill mutator.
+type TwapSliceFillFunc func(context.Context, *ent.TwapSliceFillMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f TwapSliceFillFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.TwapSliceFillMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TwapSliceFillMutation", m)
+}
+
 // The VaultDeltaFunc type is an adapter to allow the use of ordinary
 // function as VaultDelta mutator.
 type VaultDeltaFunc func(context.Context, *ent.VaultDeltaMutation) (ent.Value, error)

@@ -188,6 +188,33 @@ var (
 			},
 		},
 	}
+	// TwapSliceFillsColumns holds the columns for the "twap_slice_fills" table.
+	TwapSliceFillsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "coin", Type: field.TypeString},
+		{Name: "address", Type: field.TypeString},
+		{Name: "px", Type: field.TypeString},
+		{Name: "sz", Type: field.TypeString},
+		{Name: "side", Type: field.TypeString},
+		{Name: "time", Type: field.TypeInt64},
+		{Name: "start_position", Type: field.TypeString},
+		{Name: "closed_pnl", Type: field.TypeString},
+		{Name: "dir", Type: field.TypeString},
+		{Name: "hash", Type: field.TypeString},
+		{Name: "crossed", Type: field.TypeBool},
+		{Name: "fee", Type: field.TypeString},
+		{Name: "oid", Type: field.TypeInt64},
+		{Name: "tid", Type: field.TypeInt64, Unique: true},
+		{Name: "twap_id", Type: field.TypeInt64},
+		{Name: "fee_token", Type: field.TypeString},
+		{Name: "builder_fee", Type: field.TypeString, Nullable: true},
+	}
+	// TwapSliceFillsTable holds the schema information for the "twap_slice_fills" table.
+	TwapSliceFillsTable = &schema.Table{
+		Name:       "twap_slice_fills",
+		Columns:    TwapSliceFillsColumns,
+		PrimaryKey: []*schema.Column{TwapSliceFillsColumns[0]},
+	}
 	// VaultDeltaColumns holds the columns for the "vault_delta" table.
 	VaultDeltaColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -289,6 +316,7 @@ var (
 		RewardsClaimsTable,
 		SpotGenesesTable,
 		SpotTransfersTable,
+		TwapSliceFillsTable,
 		VaultDeltaTable,
 		VaultLeaderCommissionsTable,
 		VaultWithdrawalsTable,

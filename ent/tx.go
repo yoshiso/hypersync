@@ -28,6 +28,8 @@ type Tx struct {
 	SpotGenesis *SpotGenesisClient
 	// SpotTransfer is the client for interacting with the SpotTransfer builders.
 	SpotTransfer *SpotTransferClient
+	// TwapSliceFill is the client for interacting with the TwapSliceFill builders.
+	TwapSliceFill *TwapSliceFillClient
 	// VaultDelta is the client for interacting with the VaultDelta builders.
 	VaultDelta *VaultDeltaClient
 	// VaultLeaderCommission is the client for interacting with the VaultLeaderCommission builders.
@@ -175,6 +177,7 @@ func (tx *Tx) init() {
 	tx.RewardsClaim = NewRewardsClaimClient(tx.config)
 	tx.SpotGenesis = NewSpotGenesisClient(tx.config)
 	tx.SpotTransfer = NewSpotTransferClient(tx.config)
+	tx.TwapSliceFill = NewTwapSliceFillClient(tx.config)
 	tx.VaultDelta = NewVaultDeltaClient(tx.config)
 	tx.VaultLeaderCommission = NewVaultLeaderCommissionClient(tx.config)
 	tx.VaultWithdrawal = NewVaultWithdrawalClient(tx.config)

@@ -20,6 +20,7 @@ import (
 	"github.com/yoshiso/hypersync/ent/rewardsclaim"
 	"github.com/yoshiso/hypersync/ent/spotgenesis"
 	"github.com/yoshiso/hypersync/ent/spottransfer"
+	"github.com/yoshiso/hypersync/ent/twapslicefill"
 	"github.com/yoshiso/hypersync/ent/vaultdelta"
 	"github.com/yoshiso/hypersync/ent/vaultleadercommission"
 	"github.com/yoshiso/hypersync/ent/vaultwithdrawal"
@@ -92,6 +93,7 @@ func checkColumn(table, column string) error {
 			rewardsclaim.Table:          rewardsclaim.ValidColumn,
 			spotgenesis.Table:           spotgenesis.ValidColumn,
 			spottransfer.Table:          spottransfer.ValidColumn,
+			twapslicefill.Table:         twapslicefill.ValidColumn,
 			vaultdelta.Table:            vaultdelta.ValidColumn,
 			vaultleadercommission.Table: vaultleadercommission.ValidColumn,
 			vaultwithdrawal.Table:       vaultwithdrawal.ValidColumn,

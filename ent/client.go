@@ -22,6 +22,7 @@ import (
 	"github.com/yoshiso/hypersync/ent/rewardsclaim"
 	"github.com/yoshiso/hypersync/ent/spotgenesis"
 	"github.com/yoshiso/hypersync/ent/spottransfer"
+	"github.com/yoshiso/hypersync/ent/twapslicefill"
 	"github.com/yoshiso/hypersync/ent/vaultdelta"
 	"github.com/yoshiso/hypersync/ent/vaultleadercommission"
 	"github.com/yoshiso/hypersync/ent/vaultwithdrawal"
@@ -49,6 +50,8 @@ type Client struct {
 	SpotGenesis *SpotGenesisClient
 	// SpotTransfer is the client for interacting with the SpotTransfer builders.
 	SpotTransfer *SpotTransferClient
+	// TwapSliceFill is the client for interacting with the TwapSliceFill builders.
+	TwapSliceFill *TwapSliceFillClient
 	// VaultDelta is the client for interacting with the VaultDelta builders.
 	VaultDelta *VaultDeltaClient
 	// VaultLeaderCommission is the client for interacting with the VaultLeaderCommission builders.
@@ -76,6 +79,7 @@ func (c *Client) init() {
 	c.RewardsClaim = NewRewardsClaimClient(c.config)
 	c.SpotGenesis = NewSpotGenesisClient(c.config)
 	c.SpotTransfer = NewSpotTransferClient(c.config)
+	c.TwapSliceFill = NewTwapSliceFillClient(c.config)
 	c.VaultDelta = NewVaultDeltaClient(c.config)
 	c.VaultLeaderCommission = NewVaultLeaderCommissionClient(c.config)
 	c.VaultWithdrawal = NewVaultWithdrawalClient(c.config)
@@ -180,6 +184,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		RewardsClaim:          NewRewardsClaimClient(cfg),
 		SpotGenesis:           NewSpotGenesisClient(cfg),
 		SpotTransfer:          NewSpotTransferClient(cfg),
+		TwapSliceFill:         NewTwapSliceFillClient(cfg),
 		VaultDelta:            NewVaultDeltaClient(cfg),
 		VaultLeaderCommission: NewVaultLeaderCommissionClient(cfg),
 		VaultWithdrawal:       NewVaultWithdrawalClient(cfg),
@@ -211,6 +216,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		RewardsClaim:          NewRewardsClaimClient(cfg),
 		SpotGenesis:           NewSpotGenesisClient(cfg),
 		SpotTransfer:          NewSpotTransferClient(cfg),
+		TwapSliceFill:         NewTwapSliceFillClient(cfg),
 		VaultDelta:            NewVaultDeltaClient(cfg),
 		VaultLeaderCommission: NewVaultLeaderCommissionClient(cfg),
 		VaultWithdrawal:       NewVaultWithdrawalClient(cfg),
@@ -245,7 +251,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Delegate, c.DelegatorReward, c.Fill, c.Funding, c.InternalTransfer,
-		c.RewardsClaim, c.SpotGenesis, c.SpotTransfer, c.VaultDelta,
+		c.RewardsClaim, c.SpotGenesis, c.SpotTransfer, c.TwapSliceFill, c.VaultDelta,
 		c.VaultLeaderCommission, c.VaultWithdrawal, c.Withdraw,
 	} {
 		n.Use(hooks...)
@@ -257,7 +263,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Delegate, c.DelegatorReward, c.Fill, c.Funding, c.InternalTransfer,
-		c.RewardsClaim, c.SpotGenesis, c.SpotTransfer, c.VaultDelta,
+		c.RewardsClaim, c.SpotGenesis, c.SpotTransfer, c.TwapSliceFill, c.VaultDelta,
 		c.VaultLeaderCommission, c.VaultWithdrawal, c.Withdraw,
 	} {
 		n.Intercept(interceptors...)
@@ -283,6 +289,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.SpotGenesis.mutate(ctx, m)
 	case *SpotTransferMutation:
 		return c.SpotTransfer.mutate(ctx, m)
+	case *TwapSliceFillMutation:
+		return c.TwapSliceFill.mutate(ctx, m)
 	case *VaultDeltaMutation:
 		return c.VaultDelta.mutate(ctx, m)
 	case *VaultLeaderCommissionMutation:
@@ -1360,6 +1368,139 @@ func (c *SpotTransferClient) mutate(ctx context.Context, m *SpotTransferMutation
 	}
 }
 
+// TwapSliceFillClient is a client for the TwapSliceFill schema.
+type TwapSliceFillClient struct {
+	config
+}
+
+// NewTwapSliceFillClient returns a client for the TwapSliceFill from the given config.
+func NewTwapSliceFillClient(c config) *TwapSliceFillClient {
+	return &TwapSliceFillClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `twapslicefill.Hooks(f(g(h())))`.
+func (c *TwapSliceFillClient) Use(hooks ...Hook) {
+	c.hooks.TwapSliceFill = append(c.hooks.TwapSliceFill, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `twapslicefill.Intercept(f(g(h())))`.
+func (c *TwapSliceFillClient) Intercept(interceptors ...Interceptor) {
+	c.inters.TwapSliceFill = append(c.inters.TwapSliceFill, interceptors...)
+}
+
+// Create returns a builder for creating a TwapSliceFill entity.
+func (c *TwapSliceFillClient) Create() *TwapSliceFillCreate {
+	mutation := newTwapSliceFillMutation(c.config, OpCreate)
+	return &TwapSliceFillCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of TwapSliceFill entities.
+func (c *TwapSliceFillClient) CreateBulk(builders ...*TwapSliceFillCreate) *TwapSliceFillCreateBulk {
+	return &TwapSliceFillCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *TwapSliceFillClient) MapCreateBulk(slice any, setFunc func(*TwapSliceFillCreate, int)) *TwapSliceFillCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &TwapSliceFillCreateBulk{err: fmt.Errorf("calling to TwapSliceFillClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*TwapSliceFillCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &TwapSliceFillCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for TwapSliceFill.
+func (c *TwapSliceFillClient) Update() *TwapSliceFillUpdate {
+	mutation := newTwapSliceFillMutation(c.config, OpUpdate)
+	return &TwapSliceFillUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *TwapSliceFillClient) UpdateOne(tsf *TwapSliceFill) *TwapSliceFillUpdateOne {
+	mutation := newTwapSliceFillMutation(c.config, OpUpdateOne, withTwapSliceFill(tsf))
+	return &TwapSliceFillUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *TwapSliceFillClient) UpdateOneID(id int) *TwapSliceFillUpdateOne {
+	mutation := newTwapSliceFillMutation(c.config, OpUpdateOne, withTwapSliceFillID(id))
+	return &TwapSliceFillUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for TwapSliceFill.
+func (c *TwapSliceFillClient) Delete() *TwapSliceFillDelete {
+	mutation := newTwapSliceFillMutation(c.config, OpDelete)
+	return &TwapSliceFillDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *TwapSliceFillClient) DeleteOne(tsf *TwapSliceFill) *TwapSliceFillDeleteOne {
+	return c.DeleteOneID(tsf.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *TwapSliceFillClient) DeleteOneID(id int) *TwapSliceFillDeleteOne {
+	builder := c.Delete().Where(twapslicefill.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &TwapSliceFillDeleteOne{builder}
+}
+
+// Query returns a query builder for TwapSliceFill.
+func (c *TwapSliceFillClient) Query() *TwapSliceFillQuery {
+	return &TwapSliceFillQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeTwapSliceFill},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a TwapSliceFill entity by its id.
+func (c *TwapSliceFillClient) Get(ctx context.Context, id int) (*TwapSliceFill, error) {
+	return c.Query().Where(twapslicefill.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *TwapSliceFillClient) GetX(ctx context.Context, id int) *TwapSliceFill {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *TwapSliceFillClient) Hooks() []Hook {
+	return c.hooks.TwapSliceFill
+}
+
+// Interceptors returns the client interceptors.
+func (c *TwapSliceFillClient) Interceptors() []Interceptor {
+	return c.inters.TwapSliceFill
+}
+
+func (c *TwapSliceFillClient) mutate(ctx context.Context, m *TwapSliceFillMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&TwapSliceFillCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&TwapSliceFillUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&TwapSliceFillUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&TwapSliceFillDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown TwapSliceFill mutation op: %q", m.Op())
+	}
+}
+
 // VaultDeltaClient is a client for the VaultDelta schema.
 type VaultDeltaClient struct {
 	config
@@ -1896,12 +2037,12 @@ func (c *WithdrawClient) mutate(ctx context.Context, m *WithdrawMutation) (Value
 type (
 	hooks struct {
 		Delegate, DelegatorReward, Fill, Funding, InternalTransfer, RewardsClaim,
-		SpotGenesis, SpotTransfer, VaultDelta, VaultLeaderCommission, VaultWithdrawal,
-		Withdraw []ent.Hook
+		SpotGenesis, SpotTransfer, TwapSliceFill, VaultDelta, VaultLeaderCommission,
+		VaultWithdrawal, Withdraw []ent.Hook
 	}
 	inters struct {
 		Delegate, DelegatorReward, Fill, Funding, InternalTransfer, RewardsClaim,
-		SpotGenesis, SpotTransfer, VaultDelta, VaultLeaderCommission, VaultWithdrawal,
-		Withdraw []ent.Interceptor
+		SpotGenesis, SpotTransfer, TwapSliceFill, VaultDelta, VaultLeaderCommission,
+		VaultWithdrawal, Withdraw []ent.Interceptor
 	}
 )

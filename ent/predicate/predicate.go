@@ -30,6 +30,9 @@ type SpotGenesis func(*sql.Selector)
 // SpotTransfer is the predicate function for spottransfer builders.
 type SpotTransfer func(*sql.Selector)
 
+// TwapSliceFill is the predicate function for twapslicefill builders.
+type TwapSliceFill func(*sql.Selector)
+
 // VaultDelta is the predicate function for vaultdelta builders.
 type VaultDelta func(*sql.Selector)
 

@@ -156,6 +156,21 @@ type DelegatorReward struct {
 	TotalAmount string `json:"totalAmount"`
 }
 
+type UserTwapSliceFill struct {
+	Fill   WsFill `json:"fill"`
+	TwapID int64  `json:"twapId"`
+}
+
+type WSUserTwapSliceFills struct {
+	IsSnapshot     bool                `json:"isSnapshot"`
+	User           string              `json:"user"`
+	TwapSliceFills []UserTwapSliceFill `json:"twapSliceFills"`
+}
+type WSUserTwapSliceFillsResponse struct {
+	Channel string               `json:"channel"`
+	Data    WSUserTwapSliceFills `json:"data"`
+}
+
 type Msg struct {
 	Channel string `json:"channel"`
 }
@@ -219,6 +234,10 @@ func Conn(userAddress string) chan []byte {
 	}
 
 	if err := c.WriteJSON(WSRequest{Method: "subscribe", Subscription: UserSubscription{User: userAddress, Type: "userNonFundingLedgerUpdates"}}); err != nil {
+		fmt.Println(fmt.Errorf("ws.WriteJSON error %v", err))
+	}
+
+	if err := c.WriteJSON(WSRequest{Method: "subscribe", Subscription: UserSubscription{User: userAddress, Type: "userTwapSliceFills"}}); err != nil {
 		fmt.Println(fmt.Errorf("ws.WriteJSON error %v", err))
 	}
 
@@ -336,6 +355,26 @@ func fetchDelegatorRewards(userAddress string) ([]DelegatorReward, error) {
 	body, err := ioutil.ReadAll(res.Body)
 
 	updates := []DelegatorReward{}
+
+	json.Unmarshal(body, &updates)
+
+	return updates, nil
+}
+
+func fetchUserTwapSliceFills(userAddress string) ([]UserTwapSliceFill, error) {
+	jsonBody, _ := json.Marshal(HTTPUserRequest{User: userAddress, Type: "userTwapSliceFills"})
+
+	res, err := http.Post("https://api.hyperliquid.xyz/info", "application/json", bytes.NewBuffer(jsonBody))
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+
+	updates := []UserTwapSliceFill{}
 
 	json.Unmarshal(body, &updates)
 
@@ -639,6 +678,52 @@ func run(userAddress string, verbose bool, outputFile string, backupFile string,
 
 		fmt.Println("Complete loading fills via API")
 
+		fmt.Println("Loading twapSliceFills via REST API")
+		initUserTwapSliceFills, err := fetchUserTwapSliceFills(userAddress)
+
+		if err != nil {
+			fmt.Println(fmt.Sprintf("failed to load fills via API, and retrying... (%v)"))
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		for _, twap := range initUserTwapSliceFills {
+			fill := twap.Fill
+
+			user := client.TwapSliceFill.Create().
+				SetCoin(fill.Coin).
+				SetPx(fill.Px).
+				SetSz(fill.Sz).
+				SetSide(fill.Side).
+				SetTime(fill.Time).
+				SetStartPosition(fill.StartPosition).
+				SetClosedPnl(fill.ClosedPnl).
+				SetDir(fill.Dir).
+				SetHash(fill.Hash).
+				SetCrossed(fill.Crossed).
+				SetFee(fill.Fee).
+				SetTid(fill.Tid).
+				SetOid(fill.Oid).
+				SetFeeToken(fill.FeeToken).
+				SetTwapID(twap.TwapID).
+				SetAddress(userAddress)
+
+			if fill.BuilderFee != nil {
+				user = user.SetBuilderFee(*fill.BuilderFee)
+			}
+
+			user.OnConflict().UpdateNewValues().IDX(ctx)
+
+			if verbose {
+				fmt.Println(fmt.Sprintf(
+					"[TwapSliceFill] Coin: %s, Px: %s, Sz: %s, Side: %s, Dir: %s, Fee: %s, FeeToken: %s",
+					fill.Coin, fill.Px, fill.Sz, fill.Side, fill.Dir, fill.Fee, fill.FeeToken,
+				))
+			}
+		}
+
+		fmt.Println("Complete loading twapSliceFills via API")
+
 		fmt.Println("Loading fundings via REST API")
 		initFundings, err := fetchUserFundings(userAddress)
 		if err != nil {
@@ -886,6 +971,48 @@ func run(userAddress string, verbose bool, outputFile string, backupFile string,
 								funding.Coin, funding.Usdc, funding.Time,
 							))
 						}
+					}
+				case "userTwapSliceFills":
+					data := &WSUserTwapSliceFillsResponse{}
+					if err := json.Unmarshal(msg, &data); err != nil {
+						fmt.Println("failed to unmarshal JSON: %v", err)
+						break
+					}
+
+					for _, twap := range data.Data.TwapSliceFills {
+						fill := twap.Fill
+
+						user := client.TwapSliceFill.Create().
+							SetCoin(fill.Coin).
+							SetPx(fill.Px).
+							SetSz(fill.Sz).
+							SetSide(fill.Side).
+							SetTime(fill.Time).
+							SetStartPosition(fill.StartPosition).
+							SetClosedPnl(fill.ClosedPnl).
+							SetDir(fill.Dir).
+							SetHash(fill.Hash).
+							SetCrossed(fill.Crossed).
+							SetFee(fill.Fee).
+							SetTid(fill.Tid).
+							SetOid(fill.Oid).
+							SetFeeToken(fill.FeeToken).
+							SetTwapID(twap.TwapID).
+							SetAddress(userAddress)
+
+						if fill.BuilderFee != nil {
+							user = user.SetBuilderFee(*fill.BuilderFee)
+						}
+
+						user.OnConflict().UpdateNewValues().IDX(ctx)
+
+						if verbose {
+							fmt.Println(fmt.Sprintf(
+								"[TwapSliceFill] Coin: %s, Px: %s, Sz: %s, Side: %s, Dir: %s, Fee: %s, FeeToken: %s",
+								fill.Coin, fill.Px, fill.Sz, fill.Side, fill.Dir, fill.Fee, fill.FeeToken,
+							))
+						}
+
 					}
 
 				case "userNonFundingLedgerUpdates":

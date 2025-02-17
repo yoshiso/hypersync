@@ -16,6 +16,7 @@ import (
 	"github.com/yoshiso/hypersync/ent/delegatorreward"
 	"github.com/yoshiso/hypersync/ent/fill"
 	"github.com/yoshiso/hypersync/ent/funding"
+	"github.com/yoshiso/hypersync/ent/hyperunitoperation"
 	"github.com/yoshiso/hypersync/ent/internaltransfer"
 	"github.com/yoshiso/hypersync/ent/rewardsclaim"
 	"github.com/yoshiso/hypersync/ent/spotgenesis"
@@ -89,6 +90,7 @@ func checkColumn(table, column string) error {
 			delegatorreward.Table:       delegatorreward.ValidColumn,
 			fill.Table:                  fill.ValidColumn,
 			funding.Table:               funding.ValidColumn,
+			hyperunitoperation.Table:    hyperunitoperation.ValidColumn,
 			internaltransfer.Table:      internaltransfer.ValidColumn,
 			rewardsclaim.Table:          rewardsclaim.ValidColumn,
 			spotgenesis.Table:           spotgenesis.ValidColumn,

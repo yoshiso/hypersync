@@ -57,6 +57,18 @@ func (f FundingFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FundingMutation", m)
 }
 
+// The HyperunitOperationFunc type is an adapter to allow the use of ordinary
+// function as HyperunitOperation mutator.
+type HyperunitOperationFunc func(context.Context, *ent.HyperunitOperationMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f HyperunitOperationFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.HyperunitOperationMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.HyperunitOperationMutation", m)
+}
+
 // The InternalTransferFunc type is an adapter to allow the use of ordinary
 // function as InternalTransfer mutator.
 type InternalTransferFunc func(context.Context, *ent.InternalTransferMutation) (ent.Value, error)

@@ -100,6 +100,37 @@ var (
 			},
 		},
 	}
+	// HyperunitOperationsColumns holds the columns for the "hyperunit_operations" table.
+	HyperunitOperationsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "address", Type: field.TypeString},
+		{Name: "operation_id", Type: field.TypeString},
+		{Name: "source_chain", Type: field.TypeString},
+		{Name: "source_amount", Type: field.TypeString},
+		{Name: "source_address", Type: field.TypeString},
+		{Name: "source_tx_hash", Type: field.TypeString},
+		{Name: "destination_tx_hash", Type: field.TypeString},
+		{Name: "destination_fee_amount", Type: field.TypeString},
+		{Name: "destination_chain", Type: field.TypeString},
+		{Name: "destination_address", Type: field.TypeString},
+		{Name: "sweep_fee_amount", Type: field.TypeString},
+		{Name: "op_created_at", Type: field.TypeTime},
+		{Name: "broadcast_at", Type: field.TypeTime},
+		{Name: "state_updated_at", Type: field.TypeTime},
+	}
+	// HyperunitOperationsTable holds the schema information for the "hyperunit_operations" table.
+	HyperunitOperationsTable = &schema.Table{
+		Name:       "hyperunit_operations",
+		Columns:    HyperunitOperationsColumns,
+		PrimaryKey: []*schema.Column{HyperunitOperationsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "hyperunitoperation_address_operation_id",
+				Unique:  true,
+				Columns: []*schema.Column{HyperunitOperationsColumns[1], HyperunitOperationsColumns[2]},
+			},
+		},
+	}
 	// InternalTransfersColumns holds the columns for the "internal_transfers" table.
 	InternalTransfersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -312,6 +343,7 @@ var (
 		DelegatorRewardsTable,
 		FillsTable,
 		FundingsTable,
+		HyperunitOperationsTable,
 		InternalTransfersTable,
 		RewardsClaimsTable,
 		SpotGenesesTable,

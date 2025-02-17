@@ -18,6 +18,9 @@ type Fill func(*sql.Selector)
 // Funding is the predicate function for funding builders.
 type Funding func(*sql.Selector)
 
+// HyperunitOperation is the predicate function for hyperunitoperation builders.
+type HyperunitOperation func(*sql.Selector)
+
 // InternalTransfer is the predicate function for internaltransfer builders.
 type InternalTransfer func(*sql.Selector)
 

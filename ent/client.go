@@ -18,6 +18,7 @@ import (
 	"github.com/yoshiso/hypersync/ent/delegatorreward"
 	"github.com/yoshiso/hypersync/ent/fill"
 	"github.com/yoshiso/hypersync/ent/funding"
+	"github.com/yoshiso/hypersync/ent/hyperunitoperation"
 	"github.com/yoshiso/hypersync/ent/internaltransfer"
 	"github.com/yoshiso/hypersync/ent/rewardsclaim"
 	"github.com/yoshiso/hypersync/ent/spotgenesis"
@@ -42,6 +43,8 @@ type Client struct {
 	Fill *FillClient
 	// Funding is the client for interacting with the Funding builders.
 	Funding *FundingClient
+	// HyperunitOperation is the client for interacting with the HyperunitOperation builders.
+	HyperunitOperation *HyperunitOperationClient
 	// InternalTransfer is the client for interacting with the InternalTransfer builders.
 	InternalTransfer *InternalTransferClient
 	// RewardsClaim is the client for interacting with the RewardsClaim builders.
@@ -75,6 +78,7 @@ func (c *Client) init() {
 	c.DelegatorReward = NewDelegatorRewardClient(c.config)
 	c.Fill = NewFillClient(c.config)
 	c.Funding = NewFundingClient(c.config)
+	c.HyperunitOperation = NewHyperunitOperationClient(c.config)
 	c.InternalTransfer = NewInternalTransferClient(c.config)
 	c.RewardsClaim = NewRewardsClaimClient(c.config)
 	c.SpotGenesis = NewSpotGenesisClient(c.config)
@@ -180,6 +184,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		DelegatorReward:       NewDelegatorRewardClient(cfg),
 		Fill:                  NewFillClient(cfg),
 		Funding:               NewFundingClient(cfg),
+		HyperunitOperation:    NewHyperunitOperationClient(cfg),
 		InternalTransfer:      NewInternalTransferClient(cfg),
 		RewardsClaim:          NewRewardsClaimClient(cfg),
 		SpotGenesis:           NewSpotGenesisClient(cfg),
@@ -212,6 +217,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		DelegatorReward:       NewDelegatorRewardClient(cfg),
 		Fill:                  NewFillClient(cfg),
 		Funding:               NewFundingClient(cfg),
+		HyperunitOperation:    NewHyperunitOperationClient(cfg),
 		InternalTransfer:      NewInternalTransferClient(cfg),
 		RewardsClaim:          NewRewardsClaimClient(cfg),
 		SpotGenesis:           NewSpotGenesisClient(cfg),
@@ -250,9 +256,10 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Delegate, c.DelegatorReward, c.Fill, c.Funding, c.InternalTransfer,
-		c.RewardsClaim, c.SpotGenesis, c.SpotTransfer, c.TwapSliceFill, c.VaultDelta,
-		c.VaultLeaderCommission, c.VaultWithdrawal, c.Withdraw,
+		c.Delegate, c.DelegatorReward, c.Fill, c.Funding, c.HyperunitOperation,
+		c.InternalTransfer, c.RewardsClaim, c.SpotGenesis, c.SpotTransfer,
+		c.TwapSliceFill, c.VaultDelta, c.VaultLeaderCommission, c.VaultWithdrawal,
+		c.Withdraw,
 	} {
 		n.Use(hooks...)
 	}
@@ -262,9 +269,10 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Delegate, c.DelegatorReward, c.Fill, c.Funding, c.InternalTransfer,
-		c.RewardsClaim, c.SpotGenesis, c.SpotTransfer, c.TwapSliceFill, c.VaultDelta,
-		c.VaultLeaderCommission, c.VaultWithdrawal, c.Withdraw,
+		c.Delegate, c.DelegatorReward, c.Fill, c.Funding, c.HyperunitOperation,
+		c.InternalTransfer, c.RewardsClaim, c.SpotGenesis, c.SpotTransfer,
+		c.TwapSliceFill, c.VaultDelta, c.VaultLeaderCommission, c.VaultWithdrawal,
+		c.Withdraw,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -281,6 +289,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Fill.mutate(ctx, m)
 	case *FundingMutation:
 		return c.Funding.mutate(ctx, m)
+	case *HyperunitOperationMutation:
+		return c.HyperunitOperation.mutate(ctx, m)
 	case *InternalTransferMutation:
 		return c.InternalTransfer.mutate(ctx, m)
 	case *RewardsClaimMutation:
@@ -833,6 +843,139 @@ func (c *FundingClient) mutate(ctx context.Context, m *FundingMutation) (Value, 
 		return (&FundingDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Funding mutation op: %q", m.Op())
+	}
+}
+
+// HyperunitOperationClient is a client for the HyperunitOperation schema.
+type HyperunitOperationClient struct {
+	config
+}
+
+// NewHyperunitOperationClient returns a client for the HyperunitOperation from the given config.
+func NewHyperunitOperationClient(c config) *HyperunitOperationClient {
+	return &HyperunitOperationClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `hyperunitoperation.Hooks(f(g(h())))`.
+func (c *HyperunitOperationClient) Use(hooks ...Hook) {
+	c.hooks.HyperunitOperation = append(c.hooks.HyperunitOperation, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `hyperunitoperation.Intercept(f(g(h())))`.
+func (c *HyperunitOperationClient) Intercept(interceptors ...Interceptor) {
+	c.inters.HyperunitOperation = append(c.inters.HyperunitOperation, interceptors...)
+}
+
+// Create returns a builder for creating a HyperunitOperation entity.
+func (c *HyperunitOperationClient) Create() *HyperunitOperationCreate {
+	mutation := newHyperunitOperationMutation(c.config, OpCreate)
+	return &HyperunitOperationCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of HyperunitOperation entities.
+func (c *HyperunitOperationClient) CreateBulk(builders ...*HyperunitOperationCreate) *HyperunitOperationCreateBulk {
+	return &HyperunitOperationCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *HyperunitOperationClient) MapCreateBulk(slice any, setFunc func(*HyperunitOperationCreate, int)) *HyperunitOperationCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &HyperunitOperationCreateBulk{err: fmt.Errorf("calling to HyperunitOperationClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*HyperunitOperationCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &HyperunitOperationCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for HyperunitOperation.
+func (c *HyperunitOperationClient) Update() *HyperunitOperationUpdate {
+	mutation := newHyperunitOperationMutation(c.config, OpUpdate)
+	return &HyperunitOperationUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *HyperunitOperationClient) UpdateOne(ho *HyperunitOperation) *HyperunitOperationUpdateOne {
+	mutation := newHyperunitOperationMutation(c.config, OpUpdateOne, withHyperunitOperation(ho))
+	return &HyperunitOperationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *HyperunitOperationClient) UpdateOneID(id int) *HyperunitOperationUpdateOne {
+	mutation := newHyperunitOperationMutation(c.config, OpUpdateOne, withHyperunitOperationID(id))
+	return &HyperunitOperationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for HyperunitOperation.
+func (c *HyperunitOperationClient) Delete() *HyperunitOperationDelete {
+	mutation := newHyperunitOperationMutation(c.config, OpDelete)
+	return &HyperunitOperationDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *HyperunitOperationClient) DeleteOne(ho *HyperunitOperation) *HyperunitOperationDeleteOne {
+	return c.DeleteOneID(ho.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *HyperunitOperationClient) DeleteOneID(id int) *HyperunitOperationDeleteOne {
+	builder := c.Delete().Where(hyperunitoperation.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &HyperunitOperationDeleteOne{builder}
+}
+
+// Query returns a query builder for HyperunitOperation.
+func (c *HyperunitOperationClient) Query() *HyperunitOperationQuery {
+	return &HyperunitOperationQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeHyperunitOperation},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a HyperunitOperation entity by its id.
+func (c *HyperunitOperationClient) Get(ctx context.Context, id int) (*HyperunitOperation, error) {
+	return c.Query().Where(hyperunitoperation.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *HyperunitOperationClient) GetX(ctx context.Context, id int) *HyperunitOperation {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *HyperunitOperationClient) Hooks() []Hook {
+	return c.hooks.HyperunitOperation
+}
+
+// Interceptors returns the client interceptors.
+func (c *HyperunitOperationClient) Interceptors() []Interceptor {
+	return c.inters.HyperunitOperation
+}
+
+func (c *HyperunitOperationClient) mutate(ctx context.Context, m *HyperunitOperationMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&HyperunitOperationCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&HyperunitOperationUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&HyperunitOperationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&HyperunitOperationDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown HyperunitOperation mutation op: %q", m.Op())
 	}
 }
 
@@ -2036,13 +2179,13 @@ func (c *WithdrawClient) mutate(ctx context.Context, m *WithdrawMutation) (Value
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Delegate, DelegatorReward, Fill, Funding, InternalTransfer, RewardsClaim,
-		SpotGenesis, SpotTransfer, TwapSliceFill, VaultDelta, VaultLeaderCommission,
-		VaultWithdrawal, Withdraw []ent.Hook
+		Delegate, DelegatorReward, Fill, Funding, HyperunitOperation, InternalTransfer,
+		RewardsClaim, SpotGenesis, SpotTransfer, TwapSliceFill, VaultDelta,
+		VaultLeaderCommission, VaultWithdrawal, Withdraw []ent.Hook
 	}
 	inters struct {
-		Delegate, DelegatorReward, Fill, Funding, InternalTransfer, RewardsClaim,
-		SpotGenesis, SpotTransfer, TwapSliceFill, VaultDelta, VaultLeaderCommission,
-		VaultWithdrawal, Withdraw []ent.Interceptor
+		Delegate, DelegatorReward, Fill, Funding, HyperunitOperation, InternalTransfer,
+		RewardsClaim, SpotGenesis, SpotTransfer, TwapSliceFill, VaultDelta,
+		VaultLeaderCommission, VaultWithdrawal, Withdraw []ent.Interceptor
 	}
 )

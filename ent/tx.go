@@ -20,6 +20,8 @@ type Tx struct {
 	Fill *FillClient
 	// Funding is the client for interacting with the Funding builders.
 	Funding *FundingClient
+	// HyperunitOperation is the client for interacting with the HyperunitOperation builders.
+	HyperunitOperation *HyperunitOperationClient
 	// InternalTransfer is the client for interacting with the InternalTransfer builders.
 	InternalTransfer *InternalTransferClient
 	// RewardsClaim is the client for interacting with the RewardsClaim builders.
@@ -173,6 +175,7 @@ func (tx *Tx) init() {
 	tx.DelegatorReward = NewDelegatorRewardClient(tx.config)
 	tx.Fill = NewFillClient(tx.config)
 	tx.Funding = NewFundingClient(tx.config)
+	tx.HyperunitOperation = NewHyperunitOperationClient(tx.config)
 	tx.InternalTransfer = NewInternalTransferClient(tx.config)
 	tx.RewardsClaim = NewRewardsClaimClient(tx.config)
 	tx.SpotGenesis = NewSpotGenesisClient(tx.config)

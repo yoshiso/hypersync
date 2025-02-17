@@ -171,6 +171,33 @@ type WSUserTwapSliceFillsResponse struct {
 	Data    WSUserTwapSliceFills `json:"data"`
 }
 
+type HyperunitOperation struct {
+    OpCreatedAt         time.Time `json:"opCreatedAt"`
+    OperationID         string    `json:"operationId"`
+    ProtocolAddress     string    `json:"protocolAddress"`
+    SourceAddress       string    `json:"sourceAddress"`
+    DestinationAddress  string    `json:"destinationAddress"`
+    SourceChain         string    `json:"sourceChain"`
+    DestinationChain    string    `json:"destinationChain"`
+    SourceAmount        string    `json:"sourceAmount"`
+    DestinationFeeAmount string   `json:"destinationFeeAmount"`
+    SweepFeeAmount      string    `json:"sweepFeeAmount"`
+    StateStartedAt      time.Time `json:"stateStartedAt"`
+    StateUpdatedAt      time.Time `json:"stateUpdatedAt"`
+    StateNextAttemptAt  time.Time `json:"stateNextAttemptAt"`
+    SourceTxHash        string    `json:"sourceTxHash"`
+    DestinationTxHash   string    `json:"destinationTxHash"`
+    BroadcastAt         time.Time `json:"broadcastAt"`
+    State               string    `json:"state"`
+}
+
+type HyperunitOperationResponse struct {
+	Channel string                        `json:"channel"`
+	Operations    []HyperunitOperation `json:"operations"`
+	Address string
+}
+
+
 type Msg struct {
 	Channel string `json:"channel"`
 }
@@ -380,6 +407,26 @@ func fetchUserTwapSliceFills(userAddress string) ([]UserTwapSliceFill, error) {
 
 	return updates, nil
 }
+
+
+func fetchHyperunitOperations(userAddress string) ([]HyperunitOperation, error) {
+	res, err := http.Get("https://api.hyperunit.xyz/operations/" + userAddress)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+
+	updates := HyperunitOperationResponse{}
+
+	json.Unmarshal(body, &updates)
+
+	return updates.Operations, nil
+}
+
 
 func uploadToS3(filePath string, bucket string, key string, awsRegion string) error {
 	imageFile, err := os.Open(filePath)
@@ -601,6 +648,49 @@ func runFetchAndStoreDelegatorReward(userAddress string, client *ent.Client, ctx
 	return nil
 }
 
+
+func runFetchAndStoreHyperunitOperation(userAddress string, client *ent.Client, ctx context.Context, verbose bool) error {
+	fmt.Println("Loading hyperunitOperation via REST API")
+	initOps, err := fetchHyperunitOperations(userAddress)
+
+	if err != nil {
+		fmt.Println(fmt.Sprintf("failed to load hyperunitOperation via API, and retrying... (%v)"))
+		return err
+	}
+
+	for _, item := range initOps {
+		op := client.HyperunitOperation.Create().
+			SetAddress(userAddress).
+			SetOperationID(item.OperationID).
+			SetSourceChain(item.SourceChain).
+			SetSourceAmount(item.SourceAmount).
+			SetSourceAddress(item.SourceAddress).
+			SetSourceTxHash(item.SourceTxHash).
+			SetDestinationTxHash(item.DestinationTxHash).
+			SetDestinationFeeAmount(item.DestinationFeeAmount).
+			SetDestinationChain(item.DestinationChain).
+			SetDestinationAddress(item.DestinationAddress).
+			SetSweepFeeAmount(item.SweepFeeAmount).
+			SetOpCreatedAt(item.OpCreatedAt).
+			SetBroadcastAt(item.BroadcastAt).
+			SetStateUpdatedAt(item.StateUpdatedAt)
+
+			op.OnConflict().UpdateNewValues().IDX(ctx)
+
+		if verbose {
+			fmt.Println(fmt.Sprintf(
+				"[HyperunitOperation] SourceAmount: %s, DestinationFeeAmount: %s, SweepFeeAmount: %v, StateUpdatedAt: %v",
+				item.SourceAmount, item.DestinationFeeAmount, item.SweepFeeAmount, item.StateUpdatedAt,
+			))
+		}
+	}
+
+	fmt.Println("Complete delegatorHisotry via REST API")
+
+	return nil
+}
+
+
 func run(userAddress string, verbose bool, outputFile string, backupFile string, awsS3Region string, backupIntervalSeconds int64) {
 
 	fmt.Println("start running server", userAddress, outputFile)
@@ -631,6 +721,11 @@ func run(userAddress string, verbose bool, outputFile string, backupFile string,
 		}
 
 		if err := runFetchAndStoreDelegatorReward(userAddress, client, ctx, verbose); err != nil {
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		if err := runFetchAndStoreHyperunitOperation(userAddress, client, ctx, verbose); err != nil {
 			time.Sleep(time.Second * 10)
 			continue
 		}
@@ -895,6 +990,7 @@ func run(userAddress string, verbose bool, outputFile string, backupFile string,
 				// ignore error and hope it will be handled at next iter.
 				runFetchAndStoreDelegatorHistory(userAddress, client, ctx, verbose)
 				runFetchAndStoreDelegatorReward(userAddress, client, ctx, verbose)
+				runFetchAndStoreHyperunitOperation(userAddress, client, ctx, verbose)
 
 			case msg, ok := <-msgC:
 				if !ok {
